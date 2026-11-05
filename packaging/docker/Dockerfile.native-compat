@@ -1,0 +1,15 @@
+# Reproducible native ABI checks; no host input-method installation is modified.
+ARG DISTRO=bookworm
+FROM debian:${DISTRO}-slim
+ARG DISTRO
+COPY packaging/docker/bullseye.list /tmp/bullseye.list
+RUN if [ "$DISTRO" = bullseye ]; then cp /tmp/bullseye.list /etc/apt/sources.list; fi \
+    && apt-get -o Acquire::Check-Valid-Until=false update && apt-get install -y --no-install-recommends \
+    build-essential cmake pkg-config fcitx-libs-dev fcitx-bin fcitx-data fcitx-modules \
+    libfcitx5core-dev libx11-dev libxext-dev libcairo2-dev libpango1.0-dev \
+    libicu-dev libwayland-dev libwayland-bin dbus-x11 xvfb python3 python3-aiohttp \
+    x11-utils xdotool xauth && rm -rf /var/lib/apt/lists/*
+WORKDIR /work
+RUN apt-get -o Acquire::Check-Valid-Until=false update && apt-get install -y --no-install-recommends \
+    fcitx-module-x11 && rm -rf /var/lib/apt/lists/*
+RUN useradd --uid 1000 --create-home asrtest

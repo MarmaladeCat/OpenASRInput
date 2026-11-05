@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openasrinput"
+version = "1.0.0"
+description = "Independent dictation session and input-context core"
+license = {file = "LICENSE"}
+classifiers = ["License :: OSI Approved :: GNU General Public License v3 (GPLv3)"]
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+portal = ["aiohttp>=3.12,<4"]
+settings = ["aiohttp>=3.12,<4"]
+
+[project.scripts]
+openasrinput = "openasrinput.entrypoints.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["openasrinput*"]
+
+[tool.setuptools.package-data]
+openasrinput = ["presentation/web/*", "presentation/branding/*.svg", "presentation/branding/*.ico"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]

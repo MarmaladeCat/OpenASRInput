@@ -1,0 +1,9 @@
+{
+  "name": "openasrsoftwares-functional-browser",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Shared browser test tool; product runtimes remain independent",
+  "devDependencies": {
+    "electron": "44.4.5"
+  }
+}

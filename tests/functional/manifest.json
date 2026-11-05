@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 1,
+  "product": "OpenASRInput",
+  "pythonPath": [
+    "src",
+    "tests"
+  ],
+  "prepareWindows": [
+    [
+      "powershell.exe",
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      "tests/functional/prepare_windows.ps1"
+    ]
+  ],
+  "cases": [
+    {
+      "id": "connection-preflight",
+      "suite": "core",
+      "title": "启动预检、连接卡隔离与运行配置快照",
+      "expected": "真实 CLI 拒绝无 Key 启动，端点覆盖不会继承其他卡的 Key，运行轮次保持配置快照。",
+      "command": [
+        "{python}",
+        "-m",
+        "unittest",
+        "-v",
+        "test_connection_cli",
+        "test_runtime_config",
+        "test_daemon_cli"
+      ]
+    },
+    {
+      "id": "legacy-windows-encoding",
+      "suite": "windows-native",
+      "title": "Windows 本地编码下中文模型卡持久化",
+      "expected": "显式关闭 Python UTF-8 模式，覆盖本机系统编码下的模型卡保存、迁移和缓存。",
+      "command": [
+        "{python}",
+        "-X",
+        "utf8=0",
+        "-m",
+        "unittest",
+        "-v",
+        "test_model_cards"
+      ]
+    },
+    {
+      "id": "native-editor",
+      "artifacts": [
+        "test-results/native-editor-environment.json",
+        "test-results/native-editor-result.json",
+        "test-results/native-editor-desktop.png"
+      ],
+      "suite": "windows-native",
+      "title": "原生输入桥接与可丢弃编辑器联测",
+      "expected": "实际 Windows helper、UI Automation、TextBox/RichTextBox/WebView2 验证预览修订、定稿、取消、选区替换与焦点隔离；缺少桌面或跳过用例时失败。",
+      "timeout": 600,
+      "command": [
+        "{python}",
+        "tests/functional/check_windows_editor.py"
+      ]
+    },
+    {
+      "id": "settings-service",
+      "suite": "core",
+      "title": "设置服务与配置读写",
+      "expected": "真实 HTTP 设置服务验证本地访问、配置保存和读取；独立临时配置，不打开系统麦克风。",
+      "command": [
+        "{python}",
+        "-m",
+        "unittest",
+        "-v",
+        "test_settings_server"
+      ]
+    },
+    {
+      "id": "settings-workflow",
+      "suite": "ui",
+      "title": "设置、模型卡与连接检测",
+      "expected": "真实设置页面读写临时配置，逐卡检测和错误提示符合预期。上游为测试夹具。",
+      "command": [
+        "{electron}",
+        "tests/test_settings_ui.cjs"
+      ]
+    },
+    {
+      "id": "portal-cards",
+      "suite": "ui",
+      "title": "多 Portal 卡增改删、切换与重载",
+      "expected": "各卡 Key 独立，逐卡测试、切换、保存、重载和删除成功。",
+      "command": [
+        "{electron}",
+        "tests/test_portal_cards_ui.cjs"
+      ]
+    },
+    {
+      "id": "microphone-calibration",
+      "suite": "ui",
+      "title": "校准、复测、验证与保存",
+      "expected": "合成 PCM 和模拟识别完成实际页面校准流程，取消与互斥有效；不代表真实麦克风音质。",
+      "command": [
+        "{electron}",
+        "tests/test_calibration_ui.cjs"
+      ]
+    },
+    {
+      "id": "python-unit",
+      "suite": "unit",
+      "title": "python-unit",
+      "expected": "产品内完整回归；缺少依赖失败，条件跳过单独记录，不算完整验收通过。",
+      "command": [
+        "{python}",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-q"
+      ]
+    },
+    {
+      "id": "panel-rules",
+      "suite": "unit",
+      "title": "panel-rules",
+      "expected": "产品内完整回归；缺少依赖失败，条件跳过单独记录，不算完整验收通过。",
+      "command": [
+        "node",
+        "tests/test_wayland_panel.mjs"
+      ]
+    },
+    {
+      "id": "gnome-lifecycle",
+      "suite": "unit",
+      "title": "gnome-lifecycle",
+      "expected": "产品内完整回归；缺少依赖失败，条件跳过单独记录，不算完整验收通过。",
+      "command": [
+        "node",
+        "tests/test_gnome_lifecycle.mjs"
+      ]
+    }
+  ]
+}

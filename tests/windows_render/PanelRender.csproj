@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms><UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/native/windows/Overlay.cs" Link="Overlay.cs" />
+    <Compile Include="../../src/native/windows/Placement.cs" Link="Placement.cs" />
+    <Compile Include="../../src/native/windows/PreviewBuffer.cs" Link="PreviewBuffer.cs" />
+    <Compile Include="../../src/native/windows/Native.cs" Link="Native.cs" />
+    <Compile Include="../../src/native/windows/Target.cs" Link="Target.cs" />
+    <Compile Include="../../src/native/windows/CaretGeometry.cs" Link="CaretGeometry.cs" />
+  </ItemGroup>
+</Project>

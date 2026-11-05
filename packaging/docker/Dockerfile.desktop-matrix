@@ -1,0 +1,50 @@
+# One desktop/tool layer per distribution/architecture; framework layers share it.
+# Ubuntu 22.04 reuses the existing matrix image instead of downloading its tools again.
+ARG BASE=ubuntu:26.04
+FROM ${BASE} AS desktop
+USER root
+ENV DEBIAN_FRONTEND=noninteractive
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    rm -f /etc/apt/apt.conf.d/docker-clean && \
+    printf 'Acquire::Retries "5";\nBinary::apt::APT::Keep-Downloaded-Packages "true";\n' > /etc/apt/apt.conf.d/80-matrix-cache && \
+    apt-get update && \
+    for package in fcitx-bin fcitx-libs-dev; do \
+      if [ "$(dpkg-query -W -f='${db:Status-Status}' "$package" 2>/dev/null)" = installed ]; then \
+        apt-get remove -y "$package" || exit 1; \
+      fi; \
+    done && \
+    apt-get install -y --no-install-recommends \
+      ca-certificates python3 python3-gi gir1.2-ibus-1.0 gir1.2-gtk-3.0 gir1.2-gtk-4.0 \
+      ibus ibus-gtk3 ibus-gtk4 dbus-x11 dbus-user-session xvfb xauth xdotool x11-utils \
+      gnome-shell gnome-session-bin gnome-settings-daemon gsettings-desktop-schemas \
+      plasma-desktop plasma-workspace kwin-x11 kwin-wayland \
+      xfce4-session xfwm4 xfce4-panel xfdesktop4 xfconf \
+      libgl1-mesa-dri libegl1-mesa-dev fonts-noto-cjk imagemagick \
+      libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libxrandr2 libwayland-client0 \
+      pulseaudio-utils pkg-config && \
+    if apt-cache show plasma-session-x11 >/dev/null 2>&1; then apt-get install -y --no-install-recommends plasma-session-x11; fi && \
+    if ! getent passwd 1000 >/dev/null; then useradd -u 1000 -m asrtest; fi && \
+    rm -rf /var/lib/apt/lists/*
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/source/src LIBGL_ALWAYS_SOFTWARE=1
+WORKDIR /source
+ARG TARGETARCH
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,id=desktop-extras-${TARGETARCH},sharing=locked \
+    find /etc/apt -type f \( -name '*.sources' -o -name '*.list' \) \
+      -exec sed -i 's|http://|https://|g' {} + && \
+    apt-get update && \
+    for package in kwin-wayland-backend-x11 qtwayland5 qml-module-qt-labs-platform qt6-wayland mutter-dev-bin; do \
+      if apt-cache show "$package" >/dev/null 2>&1; then apt-get install -y --no-install-recommends "$package"; fi; \
+    done
+
+FROM desktop AS framework
+ARG FRAMEWORK=ibus
+ARG TARGETARCH
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,id=desktop-extras-${TARGETARCH},sharing=locked \
+    if [ "$FRAMEWORK" != ibus ]; then apt-get update && \
+      if [ "$FRAMEWORK" = fcitx4 ]; then apt-get install -y --no-install-recommends \
+        fcitx-bin fcitx-data fcitx-modules fcitx-module-x11 fcitx-libs-dev; \
+      else apt-get install -y --no-install-recommends \
+        fcitx5 fcitx5-module-xorg fcitx5-module-wayland fcitx5-frontend-gtk3 fcitx5-frontend-gtk4; fi; \
+    fi

@@ -1,0 +1,12 @@
+.git/
+.cache/
+.venv/
+build/
+dist/
+*.egg-info/
+config/input.local.json
+config/*.runtime.json
+config/*.lock
+runtime/
+test-results/
+node_modules/

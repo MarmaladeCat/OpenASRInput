@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "platform": "fcitx5",
+  "hotkey": {
+    "toggle": "Shift+Space",
+    "behavior": "start-pause-resume",
+    "ignoreRepeat": true,
+    "protectRimeShiftToggle": true
+  },
+  "portal": {
+    "url": "http://127.0.0.1:10087",
+    "apiKey": "local-portal",
+    "profileId": ""
+  },
+  "audio": {
+    "deviceId": null,
+    "sampleRate": 16000,
+    "channels": 1,
+    "encoding": "pcm_s16le",
+    "gain": 1
+  },
+  "input": {
+    "commitMode": "final-sentence",
+    "mode": "exclusive-dictation",
+    "previewMode": "cursor-preedit",
+    "existingRimeComposition": "reject-start",
+    "revisionPolicy": "replace-preedit-until-final",
+    "focusChanged": "retain-unsubmitted",
+    "cursorPolicy": "current-cursor-in-leased-context",
+    "unknownCommitAck": "retain-with-status"
+  },
+  "intelligence": {
+    "preferNativeText": true,
+    "hotwords": [],
+    "llmEnabled": false,
+    "llmTimeoutMs": 500
+  },
+  "overlay": {
+    "theme": "material",
+    "colorMode": "light",
+    "scale": 1,
+    "width": 760,
+    "fontSize": 15,
+    "radius": 18,
+    "placement": "host-input-panel-at-cursor",
+    "waveform": "pcm16-rms",
+    "waveformColumns": 16,
+    "layout": ["waveform", "preview-buffer", "shortcuts"],
+    "previewBufferWords": 20,
+    "previewOverflow": "scroll-latest-words",
+    "style": "modern-card",
+    "focusable": false,
+    "showPartial": true,
+    "showPendingCount": true
+  }
+}

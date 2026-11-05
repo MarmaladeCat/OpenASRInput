@@ -1,0 +1,9 @@
+recursive-include src *.py *.html *.css *.mjs *.js *.json *.svg *.ico *.cpp *.h *.conf CMakeLists.txt
+recursive-include tests *.py *.cpp *.cjs *.mjs
+recursive-include scripts *.py *.sh
+recursive-include docs *.md *.png
+include LICENSE
+include README.md README.zh-CN.md AGENTS.md AGENTS.zh-CN.md VERSION
+recursive-include tests/functional *.md *.json *.txt
+recursive-include config/examples *.json
+include packaging/openasrinput

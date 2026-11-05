@@ -1,0 +1,15 @@
+# Ubuntu 22.04 is the minimum libc baseline, not an installation distro check.
+FROM ubuntu:22.04
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential cmake pkg-config python3 python3-venv ca-certificates patchelf \
+    fcitx-bin fcitx-data fcitx-libs-dev fcitx-modules fcitx-module-x11 \
+    libfcitx5core-dev libx11-dev libxext-dev libcairo2-dev libpango1.0-dev \
+    libicu-dev libwayland-dev dbus-x11 xvfb xauth xdotool \
+    && rm -rf /var/lib/apt/lists/*
+RUN python3 -m venv /opt/build-env && \
+    /opt/build-env/bin/python -m pip install --no-cache-dir 'pyinstaller==6.16.0' 'aiohttp>=3.12,<4'
+RUN useradd --uid 1000 --create-home asrtest
+ENV PATH=/opt/build-env/bin:$PATH
+WORKDIR /source
+RUN apt-get update && apt-get install -y --no-install-recommends libpython3.10 && rm -rf /var/lib/apt/lists/*

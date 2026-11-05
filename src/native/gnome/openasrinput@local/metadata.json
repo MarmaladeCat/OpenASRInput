@@ -1,0 +1,8 @@
+{
+  "uuid": "openasrinput@local",
+  "name": "OpenASRInput Voice Panel",
+  "description": "Non-interactive graphical voice waveform and recognition preview for OpenASRInput.",
+  "shell-version": ["45", "46", "47", "48", "49", "50"],
+  "version": 2,
+  "session-modes": ["user"]
+}

@@ -1,0 +1,10 @@
+FROM ubuntu:22.04
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 python3-venv wixl msitools gcc-mingw-w64-x86-64 ca-certificates libicu70 libssl3 mono-mcs libmono-system-windows-forms4.0-cil libmono-system-serviceprocess4.0-cil \
+    && rm -rf /var/lib/apt/lists/*
+COPY .cache/windows/dotnet-sdk.tar.gz /tmp/dotnet-sdk.tar.gz
+RUN mkdir /opt/dotnet && tar -xzf /tmp/dotnet-sdk.tar.gz -C /opt/dotnet && rm /tmp/dotnet-sdk.tar.gz
+ENV PATH=/opt/dotnet:$PATH
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
+WORKDIR /source

@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>OpenASRInput · 设置</title>
+    <link rel="stylesheet" href="/settings.css" />
+    <link rel="icon" href="/branding/logo.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <div class="settings-shell">
+      <header class="settings-header">
+        <img
+          class="brand-mark"
+          src="/branding/logo.svg"
+          alt="OpenASRInput"
+          width="38"
+          height="38"
+        />
+        <div>
+          <h1>设置 <span>OpenASRInput</span></h1>
+          <p>让语音输入适合你的工作方式</p>
+        </div>
+        <span class="version">v1.0.0</span>
+      </header>
+      <div class="settings-layout">
+        <nav id="settings-nav" role="tablist" aria-label="设置分类" aria-orientation="vertical">
+          <button
+            role="tab"
+            id="tab-appearance"
+            data-page="appearance"
+            aria-controls="page-appearance"
+            aria-selected="true"
+          >
+            <span>◐</span>外观
+          </button>
+          <button
+            role="tab"
+            id="tab-audio"
+            data-page="audio"
+            aria-controls="page-audio"
+            aria-selected="false"
+            tabindex="-1"
+          >
+            <span>♩</span>麦克风
+          </button>
+          <button
+            role="tab"
+            id="tab-portal"
+            data-page="portal"
+            aria-controls="page-portal"
+            aria-selected="false"
+            tabindex="-1"
+          >
+            <span>⇄</span>语音识别
+          </button>
+          <button
+            role="tab"
+            id="tab-text-edit"
+            data-page="text-edit"
+            aria-controls="page-text-edit"
+            aria-selected="false"
+            tabindex="-1"
+          >
+            <span>✎</span>文本指令修改
+          </button>
+          <button
+            role="tab"
+            id="tab-input"
+            data-page="input"
+            aria-controls="page-input"
+            aria-selected="false"
+            tabindex="-1"
+          >
+            <span>⌨</span>输入与快捷键
+          </button>
+          <button
+            role="tab"
+            id="tab-hotwords"
+            data-page="hotwords"
+            aria-controls="page-hotwords"
+            aria-selected="false"
+            tabindex="-1"
+          >
+            <span>词</span>个人热词
+          </button>
+          <button
+            role="tab"
+            id="tab-runtime"
+            data-page="runtime"
+            aria-controls="page-runtime"
+            aria-selected="false"
+            tabindex="-1"
+          >
+            <span>◇</span>连接与关于
+          </button>
+          <div class="nav-bottom">
+            <span id="daemon-dot" class="dot"></span><span id="daemon-state">正在读取状态</span>
+          </div>
+        </nav>
+        <main id="settings-body">
+          <section id="page-appearance" role="tabpanel" aria-labelledby="tab-appearance">
+            <div class="page-heading">
+              <h2>外观</h2>
+              <p>分别设置页面与输入面板的主题，调整输入面板的位置和透明度。</p>
+            </div>
+            <div class="section">
+              <h3>设置页面主题</h3>
+              <div class="two-columns">
+                <label
+                  >主题<select id="settings-theme">
+                    <option value="github">GitHub</option>
+                    <option value="material">Material</option>
+                    <option value="nord">Nord · 冰川蓝</option>
+                    <option value="rose-pine">Rosé Pine · 松木玫瑰</option>
+                  </select></label
+                >
+                <label
+                  >亮暗模式<select id="settings-color-mode">
+                    <option value="light">亮色</option>
+                    <option value="dark">暗色</option>
+                  </select></label
+                >
+              </div>
+            </div>
+            <div class="section">
+              <h3>输入面板主题</h3>
+              <p id="panel-live-status" class="hint" role="status">
+                保存后实时应用，无需重启输入法。
+              </p>
+              <div class="two-columns">
+                <label
+                  >面板位置<select id="position">
+                    <option value="cursor">跟随光标</option>
+                    <option value="bottom">屏幕正下方</option>
+                    <option value="top">屏幕正上方</option>
+                    <option value="top-left">屏幕左上方</option>
+                    <option value="top-right">屏幕右上方</option>
+                    <option value="bottom-left">屏幕左下方</option>
+                    <option value="bottom-right">屏幕右下方</option>
+                    <option value="hidden">不显示</option>
+                  </select></label
+                >
+                <label
+                  >透明度（0–100%）<input
+                    id="transparency"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                /></label>
+              </div>
+              <p class="hint">
+                0 表示不透明，100 表示完全透明。固定位置通常使用当前输入目标所在屏幕（Wayland
+                layer-shell 由合成器选择）；隐藏面板不影响录音或文字输入。Wayland
+                无全局光标坐标时跟随模式回退屏幕下方；X11 透明度需要桌面合成器。
+              </p>
+              <div class="two-columns">
+                <label
+                  >主题（配色）<select id="theme">
+                    <option value="github">GitHub</option>
+                    <option value="material">Material</option>
+                    <option value="nord">Nord · 冰川蓝</option>
+                    <option value="rose-pine">Rosé Pine · 松木玫瑰</option>
+                  </select></label
+                ><label
+                  >亮暗模式<select id="color-mode">
+                    <option value="light">亮色</option>
+                    <option value="dark">暗色</option>
+                  </select></label
+                >
+              </div>
+              <div class="theme-description">
+                <span class="swatch"></span>
+                <div>
+                  <strong id="theme-name">Material</strong>
+                  <p id="theme-description"></p>
+                </div>
+              </div>
+            </div>
+            <div class="section">
+              <div class="section-title">
+                <h3>语音面板预览</h3>
+                <span class="chip" id="preview-layout-label">三行 · 20 词缓冲</span>
+              </div>
+              <div class="preview-stage">
+                <div id="voice-preview" class="voice-card" aria-label="语音面板外观预览">
+                  <div class="voice-top">
+                    <span class="microphone">♩</span>
+                    <div id="preview-wave" class="wave"></div>
+                    <span class="record-state">效果预览</span>
+                  </div>
+                  <div class="voice-buffer">
+                    <span>今天我们一起测试语音输入的全新外观。</span
+                    ><span class="word-count" id="preview-word-count">10 / 20</span>
+                  </div>
+                  <div class="voice-hints" id="preview-linux-keys">
+                    <kbd>Shift + Space</kbd><span>暂停 / 恢复</span><kbd>Enter</kbd><span>收尾</span
+                    ><kbd>Esc</kbd><span>取消</span>
+                  </div>
+                </div>
+              </div>
+              <p class="hint">仅外观预览，不访问麦克风。保存后，正在运行的原生面板会自动更新。</p>
+              <div class="two-columns">
+                <label
+                  >面板缩放<select id="scale">
+                    <option value="0.8">80%</option>
+                    <option value="0.9">90%</option>
+                    <option value="1">100%（默认）</option>
+                    <option value="1.1">110%</option>
+                    <option value="1.25">125%</option>
+                    <option value="1.5">150%</option>
+                  </select></label
+                ><label
+                  >预览字号<select id="font-size">
+                    <option value="12">12 px</option>
+                    <option value="13">13 px</option>
+                    <option value="14">14 px</option>
+                    <option value="15">15 px（默认）</option>
+                    <option value="16">16 px</option>
+                    <option value="18">18 px</option>
+                    <option value="20">20 px</option>
+                    <option value="22">22 px</option>
+                  </select></label
+                >
+              </div>
+              <label
+                >面板宽度 <span id="width-value" class="value"></span
+                ><input id="width" type="range" min="480" max="960" step="1" /></label
+              ><label
+                >圆角 <span id="radius-value" class="value"></span
+                ><input id="radius" type="range" min="8" max="24" step="1"
+              /></label>
+            </div>
+          </section>
+          <section id="page-hotwords" role="tabpanel" aria-labelledby="tab-hotwords" hidden>
+            <div class="page-heading">
+              <h2>个人热词与公共推荐</h2>
+              <p>默认关闭热词。同一接入 Key 共用个人表；启用、删除等编辑保存后才同步到 Portal。</p>
+            </div>
+            <div class="actions">
+              <button id="hotwords-refresh" type="button">刷新 Portal 热词状态</button>
+            </div>
+            <p id="hotwords-status" class="hint" role="status">
+              先保存 Portal 连接，再查询个人词库。
+            </p>
+            <form id="hotwords-form" class="section" hidden>
+              <label class="checkbox"
+                ><input id="hotwords-enabled" type="checkbox" />启用热词增强</label
+              >
+              <h3>我的热词表</h3>
+              <p class="hint">
+                最多 2000 词，权重 1–5。停用的词保留在表中；总开关关闭时所有词暂停使用。
+              </p>
+              <div class="two-columns">
+                <label
+                  >新增热词<input id="hotwords-new-text" maxlength="64" placeholder="输入词语"
+                /></label>
+                <label
+                  >权重<input id="hotwords-new-weight" type="number" min="1" max="5" value="4"
+                /></label>
+              </div>
+              <button id="hotwords-add" type="button">新增一条</button>
+              <label>搜索我的热词<input id="hotwords-search" type="search" /></label>
+              <p id="hotwords-count" class="hint" role="status"></p>
+              <div class="hotword-table-scroll">
+                <table class="hotword-table">
+                  <thead>
+                    <tr>
+                      <th>热词</th>
+                      <th>权重</th>
+                      <th>启用状态</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody id="hotwords-personal"></tbody>
+                </table>
+              </div>
+              <div class="actions">
+                <button id="hotwords-prev" type="button">上一页</button>
+                <button id="hotwords-next" type="button">下一页</button>
+                <button id="hotwords-download" type="button">下载我的热词表</button>
+              </div>
+              <label
+                >导入个人热词表（JSON）<input
+                  id="hotwords-file"
+                  type="file"
+                  accept=".json,application/json"
+              /></label>
+              <p class="hint">
+                下载包含词语、权重和逐词启用状态。导入按词语合并，同名词使用文件中的权重和状态，保存后同步。
+              </p>
+              <button id="hotwords-import" type="button">导入到我的热词表</button>
+              <div class="actions">
+                <button id="hotwords-save" type="submit" class="primary">保存热词设置</button>
+              </div>
+              <p id="hotwords-selection" class="hint"></p>
+            </form>
+            <section id="hotwords-dictionaries" class="section" hidden>
+              <h3>公共推荐表</h3>
+              <p class="hint">加载推荐表到候选区，点击“加入热词表”选择需要的词，再保存热词设置。</p>
+              <label
+                >公开词库<select id="dictionary-source">
+                  <option value="">选择公共推荐表</option>
+                </select></label
+              >
+              <p id="dictionary-source-note" class="hint"></p>
+              <button id="dictionary-online" type="button">加载到候选区</button>
+              <p id="dictionary-report" class="hint" role="status"></p>
+              <h4>候选区</h4>
+              <label>搜索推荐词<input id="dictionary-search" type="search" /></label>
+              <p id="dictionary-count" class="hint" role="status"></p>
+              <div id="dictionary-recommendations" class="profile-list"></div>
+              <div class="actions">
+                <button id="dictionary-prev" type="button">上一页</button>
+                <button id="dictionary-next" type="button">下一页</button>
+                <button type="submit" form="hotwords-form" class="primary">保存热词设置</button>
+              </div>
+            </section>
+          </section>
+          <section id="page-audio" role="tabpanel" aria-labelledby="tab-audio" hidden>
+            <div class="page-heading">
+              <h2>麦克风</h2>
+              <p>输入设备与录音电平，下一轮录音生效。</p>
+            </div>
+            <div class="section">
+              <label
+                >输入设备<select id="device">
+                  <option value="">系统默认设备</option>
+                </select></label
+              >
+              <div class="actions">
+                <button id="devices-refresh" type="button">刷新设备</button>
+              </div>
+              <p id="devices-status" class="hint" role="status">
+                按需读取 PulseAudio / PipeWire 的设备列表，不打开麦克风。
+              </p>
+              <details>
+                <summary>手动增益（可选，未校准时的备用设置）</summary>
+                <label
+                  >备用输入增益 <span id="gain-value" class="value"></span
+                  ><input id="gain" type="range" min="0.5" max="3" step="any"
+                /></label>
+                <p class="hint">
+                  无需先调整这里：自动校准会选择并验证输入增益，匹配设备档案时优先使用校准值。
+                  手动调整会使旧档案失效。数字增益不能消除环境噪声或修复原始录音削波。
+                </p>
+              </details>
+            </div>
+            <section class="section" id="audio-calibration" aria-labelledby="calibration-heading">
+              <h3 id="calibration-heading">麦克风自动校准</h3>
+              <p class="hint">
+                保留“系统默认设备”即可，无需手动选麦克风或调增益。程序会识别实际使用的麦克风，自动比较增益及必要的轻度高通。
+                保持平时的坐姿、距离和音量，先安静三秒，出现朗读提示后再读。请勿刻意提高声音。
+              </p>
+              <p class="hint">
+                同一录音会按少量参数分别送往当前 Portal
+                识别，并复测和验证，通常产生数分钟识别用量。音频仅在本次任务内存中使用；没有可靠改善时保留当前设置。
+              </p>
+              <p id="calibration-saved" class="hint"></p>
+              <p id="calibration-context" class="hint"></p>
+              <strong id="calibration-stage">校准朗读</strong>
+              <blockquote id="calibration-passage" class="calibration-passage"></blockquote>
+              <div id="calibration-meter" hidden>
+                <label for="calibration-level">实时峰值电平</label>
+                <meter
+                  id="calibration-level"
+                  min="0"
+                  max="100"
+                  low="40"
+                  high="94"
+                  optimum="78"
+                  value="0"
+                ></meter>
+                <span id="calibration-time"></span>
+              </div>
+              <p id="calibration-status" role="status" aria-live="polite"></p>
+              <p id="calibration-metrics" class="hint"></p>
+              <div class="actions">
+                <button id="calibration-start" type="button">开始麦克风校准</button>
+                <button id="calibration-stop" type="button" hidden>朗读完毕，结束录音</button>
+                <button id="calibration-validate" type="button" hidden>录制独立验证短文</button>
+                <button id="calibration-apply" type="button" hidden>应用验证后的配置</button>
+                <button id="calibration-cancel" type="button" hidden>取消校准</button>
+                <button id="calibration-reset" type="button">恢复此设备的手动增益</button>
+              </div>
+              <div id="calibration-results"></div>
+            </section>
+            <div class="info-card">
+              <strong>标准音频格式</strong>
+              <p>PCM16 · 16000 Hz · 单声道</p>
+              <p>
+                快捷键唤起后立即启动采集；后端未就绪时在内存缓存，ready 后按顺序发送。缓存上限 30
+                秒；后端报错或缓存满时停止录音并提示。
+              </p>
+            </div>
+          </section>
+          <section id="page-portal" role="tabpanel" aria-labelledby="tab-portal" hidden>
+            <div class="page-heading">
+              <h2>语音识别</h2>
+              <p>
+                保存多张 Portal 卡，选择一张用于下一轮录音。每张卡独立保管
+                Key、识别配置和连接测试结果。
+              </p>
+            </div>
+            <div class="section">
+              <h3>已保存的 Portal 卡</h3>
+              <div id="portal-card-list" class="model-card-list"></div>
+            </div>
+            <div class="section">
+              <h3>新增 Portal 卡</h3>
+              <div id="portal-card-new"></div>
+            </div>
+            <template id="portal-card-template">
+              <form class="model-card-form portal-card">
+                <div class="model-card-heading">
+                  <strong data-role="title"></strong><span data-role="active" class="badge"></span>
+                </div>
+                <div class="model-card-fields">
+                  <label
+                    >卡名称<input name="name" required maxlength="100" autocomplete="off"
+                  /></label>
+                  <label
+                    >Portal 地址<input name="url" type="url" required autocomplete="off"
+                  /></label>
+                  <label
+                    >识别 Key<input name="apiKey" type="password" autocomplete="new-password"
+                  /></label>
+                  <label
+                    >识别配置 ID（可选，空值跟随默认）<input
+                      name="profileId"
+                      autocomplete="off"
+                      maxlength="100"
+                  /></label>
+                  <select data-role="profiles" aria-label="选择此卡的识别配置" hidden></select>
+                </div>
+                <div class="model-card-actions">
+                  <button data-action="test" type="button">测试状态与时延</button
+                  ><button data-action="save" type="submit" class="primary">保存此卡</button
+                  ><button data-action="use" type="button">使用此 Portal</button
+                  ><button data-action="delete" type="button" class="danger">删除</button>
+                </div>
+                <p data-role="result" class="hint" role="status">尚未测试</p>
+                <p class="hint">
+                  时延为网关鉴权与配置查询的 HTTP 往返耗时，不代表真实语音识别首字时延。Key
+                  不回显、不在卡间继承。
+                </p>
+              </form>
+            </template>
+            <div class="section">
+              <h3>当前连接快捷设置</h3>
+              <p class="hint">
+                仅修改当前使用卡；无当前卡时保存为原 Portal 连接。推荐在上方逐卡管理。
+              </p>
+              <label
+                >Portal 地址<input
+                  id="portal-url"
+                  type="url"
+                  placeholder="http://127.0.0.1:10087"
+                  spellcheck="false" /></label
+              ><label
+                >Portal 接入 Key<input
+                  id="portal-key"
+                  type="password"
+                  autocomplete="new-password"
+                  placeholder="填写接入 Key" /></label
+              ><label class="checkbox"
+                ><input id="clear-key" type="checkbox" />清除已保存的接入 Key</label
+              >
+              <div class="actions">
+                <button id="portal-test" class="primary" type="button">测试并刷新配置</button
+                ><a id="portal-admin" class="button" href="#" target="_blank" rel="noreferrer"
+                  >打开 Portal 管理页 ↗</a
+                >
+              </div>
+              <p id="portal-status" class="hint" role="status">
+                填写连接信息后，可以测试尚未保存的表单。
+              </p>
+              <h3>识别配置</h3>
+              <p class="hint">选择“跟随 Portal 默认”或指定配置卡片，保存后在下一轮录音生效。</p>
+              <div id="profile-list" class="profile-list"></div>
+            </div>
+            <div class="info-card">
+              <strong>光标预编辑与二次识别</strong>
+              <p>首遍文字在光标处显示，二次识别原位替换；稳定定稿直接上屏一次。</p>
+              <p>上游端点、模型与提供商密钥由 Portal 管理。这里仅保存本输入客户端的接入信息。</p>
+            </div>
+          </section>
+          <section id="page-text-edit" role="tabpanel" aria-labelledby="tab-text-edit" hidden>
+            <div class="page-heading">
+              <h2>文本指令修改</h2>
+              <p>配置选区语音修改使用的文本模型，保存后在下一轮录音生效。</p>
+            </div>
+            <div class="section">
+              <h3>已有模型卡</h3>
+              <p class="hint">
+                每张卡独立配置、测试和保存；“使用此模型”会立即切换，下一轮录音生效。
+              </p>
+              <div id="model-card-list" class="profile-list"></div>
+              <button id="model-card-disable" type="button">停用文本修改</button>
+            </div>
+            <div class="section model-card-new-section">
+              <h3>新增模型卡</h3>
+              <p class="hint">
+                选择来源 → 配置地址和 Key → 刷新并选择模型，或手填兼容模型名称 →
+                保存。完整配置后才会加入上方列表。
+              </p>
+              <div id="model-card-new"></div>
+            </div>
+            <div class="info-card">
+              <p class="hint">
+                选中文本后按 Alt+Z，说出“翻译为英文”等指令，再按快捷键或 Enter
+                结束。指令只显示在面板，模型完成后替换原选区。Esc 取消；目标或选区变化时不替换。
+              </p>
+              <p class="hint">
+                仅在选区修改时向当前模型卡发送选区和指令；普通听写只连接 Portal。 DeepSeek
+                使用官方目录；其他服务使用 OpenAI Chat Completions
+                兼容格式。不支持选区读取的应用会提示，请用 Shift+Space 听写。
+              </p>
+            </div>
+          </section>
+          <template id="model-card-template">
+            <form class="model-card-form" novalidate>
+              <div class="model-card-heading">
+                <strong data-role="title"></strong><span data-role="active"></span>
+              </div>
+              <div class="model-card-fields">
+                <label
+                  >模型卡名称<input
+                    name="name"
+                    maxlength="100"
+                    required
+                    placeholder="例如：日常润色"
+                /></label>
+                <label
+                  >模型来源类型<select name="provider">
+                    <option value="deepseek">DeepSeek 官方</option>
+                    <option value="openai-compatible">OpenAI 兼容</option>
+                  </select></label
+                >
+                <label data-field="official-url"
+                  >官方 API 地址<select name="official-url">
+                    <option value="https://api.deepseek.com">https://api.deepseek.com</option>
+                    <option value="https://api.deepseek.com/v1">https://api.deepseek.com/v1</option>
+                  </select></label
+                >
+                <label data-field="url"
+                  >API Base URL<input
+                    name="url"
+                    type="url"
+                    spellcheck="false"
+                    placeholder="https://api.example.com/v1"
+                /></label>
+                <label
+                  >API Key<input
+                    name="apiKey"
+                    type="password"
+                    autocomplete="new-password"
+                    placeholder="手动填写此模型卡的 Key" /><small data-role="key-note"></small
+                ></label>
+                <label data-field="mode"
+                  >模型名称填写方式<select name="mode">
+                    <option value="manual">手动填写</option>
+                    <option value="list">刷新后选择</option>
+                  </select></label
+                >
+                <label data-field="model"
+                  >模型名称<input name="model" spellcheck="false" placeholder="例如 deepseek-flash"
+                /></label>
+                <label data-field="model-choice"
+                  >模型名称<select name="model-choice"></select
+                ></label>
+              </div>
+              <div class="model-card-actions">
+                <button type="button" data-action="models">刷新模型名称</button>
+                <button type="button" data-action="test">测试可用性</button>
+                <button type="submit" data-action="save">保存模型卡</button>
+                <button type="button" data-action="use">使用此模型</button>
+                <button type="button" data-action="delete">删除</button>
+              </div>
+              <p data-role="result" role="status" aria-live="polite"></p>
+              <p class="hint">
+                名称、来源、地址、模型和 Key
+                配置完整后才能保存；测试失败不影响保存。测试使用固定示例，产生少量模型调用费用。
+              </p>
+            </form>
+          </template>
+          <section id="page-input" role="tabpanel" aria-labelledby="tab-input" hidden>
+            <div class="page-heading">
+              <h2>输入与快捷键</h2>
+              <p id="input-description">与雾凇配合的语音专用模式。</p>
+            </div>
+            <div class="section" id="keyboard-native-section">
+              <label
+                >Linux 输入框架<select id="input-framework">
+                  <option value="auto">自动识别</option>
+                  <option value="ibus">IBus</option>
+                  <option value="fcitx4">Fcitx4（X11）</option>
+                  <option value="fcitx5">Fcitx5</option>
+                </select></label
+              >
+              <p id="framework-status" class="hint" role="status"></p>
+              <p class="hint">
+                保存后执行 openasrinput start
+                应用框架选择。自动模式识别运行中的框架，多框架冲突时请手动指定。IBus 启动后执行 ibus
+                engine openasrinput 切换到语音输入源；结束后可切回原输入源。IBus 与 Fcitx5
+                共用自定义面板；Alt+Z 选区修改需要应用通过输入法提供完整选区，修改前会重新核验目标。
+              </p>
+              <label class="checkbox"
+                ><input id="keyboard-inline" type="checkbox" />普通雾凇键盘输入使用内联预编辑</label
+              >
+              <p class="hint">
+                若某些输入框选词后出现“重复重复”，可关闭此选项：普通拼音预览留在候选面板，减少客户端重复提交预编辑的兼容问题。语音预编辑不受影响。保存后立即生效，停止软件后恢复原行为。
+              </p>
+            </div>
+            <div class="shortcut-list">
+              <div><kbd>Shift + Space</kbd><span>开始、结束普通语音输入</span></div>
+              <div><kbd>Alt + Z</kbd><span>有选区：语音指令修改；无选区：普通语音输入</span></div>
+              <div id="linux-extra-keys">
+                <kbd>Enter</kbd><span>收尾</span><kbd>Esc</kbd><span>取消尚未提交的语音内容</span>
+              </div>
+            </div>
+            <div class="section">
+              <h3>三行语音面板</h3>
+              <ol>
+                <li>第一行：语音波形与状态</li>
+                <li id="preview-size-text">第二行：最近 20 词，左到右更新</li>
+                <li>第三行：简单快捷键提示</li>
+              </ol>
+              <p class="hint" id="preview-policy">
+                中文按 ICU 词典分词。20 词限制只影响面板显示，完整预编辑和最终上屏内容不截断。
+              </p>
+            </div>
+            <div class="info-card">
+              <strong>键盘与语音按模式使用</strong>
+              <p id="keyboard-policy">
+                已有输入法候选时先结束候选，再开始语音。录音中普通字符与编辑键由语音模式消费；暂停收尾后恢复普通键盘输入。
+              </p>
+              <p>焦点失效时保留未提交文字，不会自动输入到新的窗口。</p>
+            </div>
+          </section>
+          <section id="page-runtime" role="tabpanel" aria-labelledby="tab-runtime" hidden>
+            <div class="page-heading">
+              <h2>连接与关于</h2>
+              <p>独立配置与本机输入桥接。</p>
+            </div>
+            <div class="section">
+              <div id="socket-section">
+                <label
+                  >原生桥接 socket 路径<input id="socket-path" type="text" spellcheck="false"
+                /></label>
+                <p class="hint">
+                  与测试实例的 OPENASRINPUT_SOCKET 保持一致。修改后在下一次启动 daemon 时生效。
+                </p>
+              </div>
+              <h3>当前运行状态</h3>
+              <p id="runtime-status" class="runtime-status" role="status"></p>
+              <p id="runtime-error" class="hint"></p>
+              <p id="stop-reason" class="hint"></p>
+              <details>
+                <summary>最近会话事件（不包含语音文本和 Key）</summary>
+                <pre id="runtime-events"></pre>
+              </details>
+              <label
+                >启动命令
+                <pre id="launch-command"></pre>
+              </label>
+            </div>
+            <div class="info-card">
+              <strong>OpenASRInput 1.0.0</strong>
+              <p id="platform-description">独立语音输入 · Portal v1 · Fcitx 公共桥接</p>
+              <p>配置文件：<code id="config-path"></code></p>
+              <p id="platform-boundary">
+                本界面只管理 OpenASRInput，不安装或重启输入框架，不改动输入法方案。
+              </p>
+            </div>
+          </section>
+        </main>
+      </div>
+      <footer>
+        <div>
+          <span id="feedback" role="status" aria-live="polite">正在载入设置…</span
+          ><span id="dirty-indicator" class="dirty" hidden>未保存</span>
+        </div>
+        <div class="actions">
+          <button id="reload" type="button">重新载入</button
+          ><button id="save" class="primary" type="button" disabled>保存设置</button>
+        </div>
+      </footer>
+    </div>
+    <script type="module" src="/settings.mjs"></script>
+  </body>
+</html>

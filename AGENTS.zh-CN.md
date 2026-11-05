@@ -1,0 +1,13 @@
+# OpenASRInput 开发约束
+
+[English](AGENTS.md) | **简体中文**
+
+先检查 Git 状态，再阅读 README.md、docs/development.md、docs/testing.md 和 docs/release.md。
+功能与性能不得因目录/仓库调整退化；保持本产品完整可独立启动、测试、打包和发布。
+不导入其他产品源码、不共享数据库、不借用其他产品的 Python 或 Node 运行时；跨产品使用公开协议。
+修改行为时选择对应单元、业务、UI、原生与包级检查；发布依据以 docs/testing.md 为准。
+跳过、失败、环境不足不得记录为通过；模拟上游不能替代真实模型/设备/平台验收。
+docs/ 人工维护当前双语文档，英文默认文件名与中文 *.zh-CN.md 双向互链；scripts/build.py 使用固定构建环境，候选包在 .cache/build/artifacts/，最终输出 `release/<VERSION>/`，版本下平铺软件包和校验文件。不得使用产品 dist/。
+测试输出放 test-results/，工具、容器与虚拟机状态放 .cache/，均不提交。
+不携带旧仓库 Git 历史、开发记录、更新状态、个人路径、内部主机地址或真实 Key；新项目正常记录自己的提交。
+先提交并推送本产品，再由总仓库更新子模块引用；不要强推或改写已经共享的新项目提交。

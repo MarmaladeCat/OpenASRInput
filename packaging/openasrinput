@@ -1,0 +1,50 @@
+#!/usr/bin/python3
+"""Deb entry point, isolated from the source checkout and trial interpreter."""
+
+import os
+import sys
+from pathlib import Path
+
+if getattr(sys, "frozen", False):
+    # PyInstaller's private libraries are for this process, not systemctl,
+    # gdbus, pactl/parec or the user's browser on another distribution.
+    original = os.environ.get("LD_LIBRARY_PATH_ORIG")
+    if original is None:
+        os.environ.pop("LD_LIBRARY_PATH", None)
+    else:
+        os.environ["LD_LIBRARY_PATH"] = original
+
+app_root = os.environ.get("OPENASRINPUT_APP_ROOT", "/usr/lib/openasrinput")
+framework_file = Path(app_root) / "framework"
+os.environ.setdefault(
+    "OPENASRINPUT_PACKAGE_FRAMEWORK",
+    framework_file.read_text().strip() if framework_file.exists() else "auto",
+)
+sys.path.insert(0, app_root)
+home = Path.home()
+os.environ.setdefault(
+    "OPENASRINPUT_CONFIG",
+    str(Path(os.environ.get("XDG_CONFIG_HOME", home / ".config")) / "openasrinput/input.json"),
+)
+os.environ.setdefault(
+    "OPENASRINPUT_DEFAULT_SOCKET",
+    str(Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "openasrinput.sock"),
+)
+os.environ.setdefault("PYTHONDONTWRITEBYTECODE", "1")
+action = sys.argv[1] if len(sys.argv) > 1 else "settings"
+if action in ("--version", "version"):
+    from openasrinput import __version__
+
+    print("OpenASRInput " + __version__)
+elif action in ("settings", "start", "stop", "rollback", "status", "portal") and len(sys.argv) <= 2:
+    from openasrinput.infrastructure.desktop import dispatch
+
+    dispatch(action)
+else:
+    if action == "run-daemon":
+        sys.argv[1] = "daemon"
+    elif action == "settings-server":
+        sys.argv[1] = "settings"
+    from openasrinput.__main__ import main
+
+    main()

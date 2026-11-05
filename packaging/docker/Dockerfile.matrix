@@ -1,0 +1,34 @@
+# Source is bind-mounted read-only at runtime; images contain tools only.
+ARG BASE=ubuntu:22.04
+FROM node:22.22.0-bookworm-slim AS node-runtime
+FROM ${BASE}
+ARG GNOME=0
+ENV DEBIAN_FRONTEND=noninteractive
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    rm -f /etc/apt/apt.conf.d/docker-clean && \
+    echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries && \
+    apt-get update && apt-get install -y --no-install-recommends \
+    build-essential cmake pkg-config dpkg-dev patchelf ca-certificates \
+    python3 python3-dev python3-venv python3-gi python3-tk libpython3-dev \
+    ibus ibus-gtk3 ibus-gtk4 gir1.2-ibus-1.0 gir1.2-gtk-3.0 gir1.2-gtk-4.0 \
+    fcitx-libs-dev libfcitx5core-dev \
+    libx11-dev libxext-dev libxrandr-dev libcairo2-dev libpango1.0-dev libicu-dev \
+    libwayland-dev libwayland-bin dbus-x11 xvfb xauth xdotool x11-utils \
+    pulseaudio-utils fonts-noto-cjk sway wtype imagemagick libgl1-mesa-dri \
+    && if [ "$GNOME" = 1 ]; then apt-get install -y --no-install-recommends \
+       gnome-shell gnome-session-bin gnome-settings-daemon dbus-user-session; fi \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=node-runtime /usr/local/bin/node /usr/local/bin/node
+RUN python3 -m venv --system-site-packages /opt/check && \
+    /opt/check/bin/pip install --no-cache-dir 'aiohttp>=3.12,<4' 'pyinstaller==6.16.0'
+RUN useradd --uid 1000 --create-home asrtest
+ARG FRAMEWORK=fcitx5
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    apt-get update && if [ "$FRAMEWORK" = fcitx4 ]; then \
+      apt-get install -y --no-install-recommends fcitx-bin fcitx-data fcitx-modules fcitx-module-x11; \
+    elif [ "$FRAMEWORK" = fcitx5 ]; then \
+      apt-get install -y --no-install-recommends fcitx5 fcitx5-module-xorg fcitx5-frontend-gtk3 fcitx5-frontend-gtk4; \
+    else apt-get remove -y fcitx-libs-dev fcitx-bin; \
+    fi && rm -rf /var/lib/apt/lists/*
+ENV PATH=/opt/check/bin:$PATH PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/source/src
+WORKDIR /source
