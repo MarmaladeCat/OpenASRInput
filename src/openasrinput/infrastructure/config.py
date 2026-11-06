@@ -15,7 +15,7 @@ from urllib.parse import urlsplit
 from ..presentation.themes import THEMES
 from .audio_profiles import validate_profiles
 from .model_cards import fingerprint, merge_cards, normalize_editor, require_complete
-from .platform_support import config_home, exclusive_lock, socket_default
+from .platform_support import config_home, exclusive_lock, legacy_config_home, socket_default
 from .portal_cards import fingerprint as portal_fingerprint
 from .portal_cards import merge_cards as merge_portal_cards
 from .portal_cards import normalize_portal
@@ -208,6 +208,8 @@ def normalize(value):
 class ConfigStore:
     def __init__(self, path=None, *, system_portal=None):
         self.path = Path(path or default_path()).expanduser().resolve()
+        if path is None and not os.environ.get("OPENASRINPUT_CONFIG"):
+            self.migrate_legacy()
         self.status_path = self.path.with_suffix(".runtime.json")
         # Explicit configurations (including test sandboxes and source workspaces)
         # must not silently inherit an installed desktop's credentials.
@@ -215,9 +217,44 @@ class ConfigStore:
             Path(system_portal)
             if system_portal is not None
             else Path("/etc/openasrinput/portal.json")
-            if path is None and os.name != "nt"
+            if path is None and not os.environ.get("OPENASRINPUT_CONFIG") and os.name != "nt"
             else None
         )
+
+    def migrate_legacy(self):
+        """Copy this user's configuration once; keep the legacy copy for recovery."""
+        previous = legacy_config_home()
+        if previous.resolve() == self.path.parent or not (previous / "input.json").is_file():
+            return
+        if self.path.exists():
+            return
+        self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        with exclusive_lock(self.path.with_suffix(".lock")):
+            if self.path.exists():
+                return
+            sources = sorted(
+                previous.glob("input*.json"), key=lambda source: source.name == "input.json"
+            )
+            for source in sources:
+                if source.is_symlink() or source.name.endswith(".runtime.json"):
+                    continue
+                destination = self.path.parent / source.name
+                if not destination.exists():
+                    # Preserve unknown extension fields and credentials byte-for-byte.
+                    raw = source.read_bytes()
+                    # Validate before marking migration complete with input.json last.
+                    json.loads(raw)
+                    descriptor, temporary = tempfile.mkstemp(
+                        dir=self.path.parent, prefix=".migration-"
+                    )
+                    try:
+                        with os.fdopen(descriptor, "wb") as output:
+                            output.write(raw)
+                            output.flush()
+                            os.fsync(output.fileno())
+                        Path(temporary).replace(destination)
+                    finally:
+                        Path(temporary).unlink(missing_ok=True)
 
     def installed_defaults(self):
         if self.system_portal is None:
@@ -304,7 +341,7 @@ class ConfigStore:
 
     def record_portal_result(self, card, result):
         path = self.path.with_suffix(".portals.json")
-        path.parent.mkdir(parents=True, exist_ok=True)
+        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         with exclusive_lock(path.with_suffix(".lock")):
             try:
                 saved = json.loads(path.read_bytes())
@@ -323,7 +360,7 @@ class ConfigStore:
 
     def record_model_result(self, card, kind, result):
         path = self.path.with_suffix(".models.json")
-        path.parent.mkdir(parents=True, exist_ok=True)
+        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         with exclusive_lock(path.with_suffix(".lock")):
             try:
                 saved = json.loads(path.read_bytes())
@@ -415,7 +452,7 @@ class ConfigStore:
         return result
 
     def save(self, patch, expected_revision):
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         with exclusive_lock(self.path.with_suffix(".lock")):
             current, revision = self.read()
             if expected_revision != revision:
@@ -464,7 +501,7 @@ def _replace_json(temporary, path):
 
 def atomic_json(path, value):
     path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     descriptor, temporary = tempfile.mkstemp(prefix="." + path.name, dir=path.parent)
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8") as output:

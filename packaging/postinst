@@ -1,0 +1,12 @@
+#!/bin/sh
+set -e
+if [ "$1" = configure ]; then
+    if [ -L /var/lib/openasr ] || [ -L /var/lib/openasr/input ]; then
+        echo 'Input configuration parent must not be a symlink.' >&2
+        exit 1
+    fi
+    # Sticky parent permits each desktop user to create only their own private
+    # UID directory. Product configuration itself is never world-readable.
+    install -d -o root -g root -m 0755 /var/lib/openasr
+    install -d -o root -g root -m 1777 /var/lib/openasr/input
+fi

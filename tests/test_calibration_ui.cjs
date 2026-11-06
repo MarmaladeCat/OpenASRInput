@@ -70,6 +70,7 @@ async function run() {
     webPreferences: { contextIsolation: true, nodeIntegration: false }
   });
   await window.loadURL(JSON.parse(fs.readFileSync(ready)).url);
+  await require('./language_ui.cjs').language(window, 'zh-CN');
   await wait("document.getElementById('calibration-passage').textContent.length > 20");
   await click('tab-audio');
   assert.equal(await js("document.getElementById('device').value"), '');

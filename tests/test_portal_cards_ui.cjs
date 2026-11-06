@@ -40,7 +40,7 @@ async function run() {
     response.setHeader('Content-Type', 'application/json');
     if (!['Bearer key-a', 'Bearer key-b'].includes(request.headers.authorization)) {
       response.statusCode = 401;
-      response.end(JSON.stringify({ error: { code: 'AUTH_FAILED', message: 'invalid test key' } }));
+      response.end(JSON.stringify({ error: { code: 'AUTH_FAILED', message: '此 Key 已撤销' } }));
       return;
     }
     setTimeout(
@@ -107,6 +107,7 @@ async function run() {
   });
   win.webContents.on('will-prevent-unload', (event) => event.preventDefault());
   await win.loadURL(ready.settingsUrl);
+  await require('./language_ui.cjs').language(win, 'zh-CN');
   await wait('!!document.querySelector("#portal-card-new form")');
   await js(
     "document.getElementById('width').value='720'; document.getElementById('width').dispatchEvent(new Event('input',{bubbles:true}));"
@@ -119,7 +120,7 @@ async function run() {
     'Appearance-only save must not create an empty legacy Portal card'
   );
   await click('#tab-portal');
-  await input('#portal-card-new form', { name: '本机网关 A', url: origin, apiKey: 'key-a' });
+  await input('#portal-card-new form', { name: '删除', url: origin, apiKey: 'key-a' });
   await click('#portal-card-new [data-action=test]');
   await wait(
     'document.querySelector("#portal-card-new [data-role=result]").textContent.includes("连接通过")'
@@ -147,6 +148,22 @@ async function run() {
     'document.querySelector("#portal-card-list form [data-role=result]").textContent.includes("连接失败")'
   );
   assert.equal(JSON.parse(fs.readFileSync(config)).portal.apiKey, 'key-b');
+  await require('./language_ui.cjs').language(win, 'en');
+  assert.equal(
+    await js('document.querySelector("#portal-card-list form [data-role=title]").textContent'),
+    '删除',
+    'User card names are not interface messages'
+  );
+  assert.equal(
+    await js('document.querySelector("#portal-card-list form input[name=apiKey]").value'),
+    'wrong-key',
+    'Language switch retains the unsaved key'
+  );
+  assert.match(
+    await js('document.querySelector("#portal-card-list form [data-role=result]").textContent'),
+    /This key has been revoked/
+  );
+  await require('./language_ui.cjs').language(win, 'zh-CN');
   const reloaded = new Promise((resolve) => win.webContents.once('did-finish-load', resolve));
   win.reload();
   await reloaded;

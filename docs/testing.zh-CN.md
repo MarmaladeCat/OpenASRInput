@@ -35,7 +35,7 @@ python scripts/test.py run --suite ui
 包级检查入口示例（须先构建匹配平台的候选包）：
 
 ```bash
-python tests/test_portable_deb.py .cache/build/artifacts/linux/amd64/auto/openasrinput_1.0.0_amd64.deb
+python tests/test_portable_deb.py .cache/build/artifacts/linux/amd64/auto/openasrinput_1.0.1_amd64.deb
 ```
 
 ## 结果规则

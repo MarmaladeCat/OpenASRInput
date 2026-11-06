@@ -145,7 +145,8 @@ def main():
         handoff = json.loads(args.portal_settings_handoff.read_text(encoding="utf-8"))
         if handoff.get("schemaVersion") != 1:
             parser.error("联合安装交接版本无效")
-        portal_settings_url = handoff["portal"]["url"].rstrip("/") + "/admin"
+        if handoff.get("setupRequired", True):
+            portal_settings_url = handoff["portal"]["url"].rstrip("/") + "/admin"
     directory = config_home()
     directory.mkdir(parents=True, exist_ok=True)
     ready = directory / "settings-ready.json"

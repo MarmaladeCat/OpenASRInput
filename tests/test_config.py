@@ -103,6 +103,45 @@ class ConfigTests(unittest.TestCase):
             with patch("pathlib.Path.home", side_effect=RuntimeError):
                 self.assertEqual(config_home(), explicit.parent / product)
 
+    def test_installed_user_migration_preserves_credentials_and_metadata_once(self):
+        root = Path(self.directory.name)
+        legacy = root / "legacy"
+        legacy.mkdir()
+        value = {
+            "portal": {"url": "http://127.0.0.1:10087", "apiKey": "migration-fixture-key"},
+            "custom": {"name": "中文"},
+        }
+        raw = json.dumps(value, ensure_ascii=False).encode()
+        (legacy / "input.json").write_bytes(raw)
+        (legacy / "input.models.json").write_text('{"saved":true}')
+        (legacy / "input.runtime.json").write_text('{"running":true}')
+        with (
+            patch.dict(os.environ, {"OPENASR_DATA_ROOT": str(root / "shared")}, clear=True),
+            patch("openasrinput.infrastructure.config.legacy_config_home", return_value=legacy),
+        ):
+            store = ConfigStore()
+            self.assertEqual(store.path.read_bytes(), raw)
+            self.assertEqual(store.path.with_suffix(".models.json").read_text(), '{"saved":true}')
+            self.assertFalse(store.status_path.exists())
+            self.assertEqual((legacy / "input.json").read_bytes(), raw)
+            store.path.write_text('{"new":true}')
+            self.assertEqual(ConfigStore().path.read_text(), '{"new":true}')
+            explicit = ConfigStore(root / "explicit.json")
+            self.assertFalse(explicit.path.exists())
+            if os.name != "nt":
+                self.assertEqual(store.path.stat().st_mode & 0o777, 0o600)
+                self.assertEqual(store.path.parent.stat().st_mode & 0o777, 0o700)
+
+    @unittest.skipIf(os.name == "nt", "POSIX symlink ownership")
+    def test_installed_directory_refuses_user_symlink(self):
+        root = Path(self.directory.name)
+        shared = root / "shared/input"
+        shared.mkdir(parents=True)
+        (shared / str(os.getuid())).symlink_to(root, target_is_directory=True)
+        with patch.dict(os.environ, {"OPENASR_DATA_ROOT": str(root / "shared")}, clear=True):
+            with self.assertRaises(PermissionError):
+                config_home()
+
     def test_stale_status_preserves_exit_diagnostics_without_claiming_running(self):
         self.store.status_path.write_text(
             json.dumps(

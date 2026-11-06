@@ -119,7 +119,7 @@ namespace OpenASR.Installation
         }
         public static void ValidateSettings(Request request)
         {
-            var allowed = new HashSet<string> { "INSTALLDIR", "INPUTDATADIR", "PORTALDATADIR", "BUNDLEDATADIR", "ADDLOCAL", "OPENASRINPUT_NO_LAUNCH" };
+            var allowed = new HashSet<string> { "INSTALLDIR", "INPUTDATADIR", "PORTALDATADIR", "BUNDLEDATADIR", "LEGACYINPUTDATADIR", "LEGACYPORTALDATADIR", "OPENASR_PREVIOUS_INSTALLATION", "ADDLOCAL", "OPENASRINPUT_NO_LAUNCH", "OPENASRPORTAL_NO_LAUNCH" };
             if (request.Settings.Any(p => !allowed.Contains(p.Name)))
                 throw new InvalidDataException("Unsupported installer property");
             foreach (var setting in request.Settings)
@@ -351,6 +351,11 @@ namespace OpenASR.Installation
                         if (String.IsNullOrEmpty(path)) continue;
                         var setting = request.Settings.FirstOrDefault(p => p.Name == pair[0]);
                         string defaultPath = Path.Combine(Environment.GetFolderPath(pair[0] == "INPUTDATADIR" ? Environment.SpecialFolder.ApplicationData : Environment.SpecialFolder.CommonApplicationData), pair[0] == "INPUTDATADIR" ? "OpenASRInput" : "OpenASRPortal");
+                        if (String.Equals(Path.GetFullPath(path).TrimEnd('\\'), defaultPath, StringComparison.OrdinalIgnoreCase)) {
+                            request.Settings.Add(new Setting { Name = "LEGACY" + pair[0], Value = path });
+                            if (setting != null && String.Equals(Path.GetFullPath(setting.Value).TrimEnd('\\'), defaultPath, StringComparison.OrdinalIgnoreCase)) request.Settings.Remove(setting);
+                            continue;
+                        }
                         if (setting != null && !String.Equals(Path.GetFullPath(setting.Value).TrimEnd('\\'), defaultPath, StringComparison.OrdinalIgnoreCase)) continue;
                         if (setting == null) request.Settings.Add(new Setting { Name = pair[0], Value = path }); else setting.Value = path;
                     }
@@ -362,7 +367,8 @@ namespace OpenASR.Installation
                 var request = Read(session);
                 if (request.Products.Count == 0) return ActionResult.Success;
                 request.Digest = Replacement.Hash(request.Package);
-                foreach (string name in new[] { "INSTALLDIR", "INPUTDATADIR", "PORTALDATADIR", "BUNDLEDATADIR", "OPENASRINPUT_NO_LAUNCH" })
+                request.Settings.Add(new Setting { Name = "OPENASR_PREVIOUS_INSTALLATION", Value = "1" });
+                foreach (string name in new[] { "INSTALLDIR", "INPUTDATADIR", "PORTALDATADIR", "BUNDLEDATADIR", "OPENASRINPUT_NO_LAUNCH", "OPENASRPORTAL_NO_LAUNCH" })
                     if (!String.IsNullOrEmpty(session[name])) request.Settings.Add(new Setting { Name = name, Value = session[name] });
                 if (request.Kind == "bundle") request.Settings.Add(new Setting { Name = "ADDLOCAL", Value = request.WantPortal ? "InputCore,Portal" : "InputCore" });
                 PreserveData(session, request);

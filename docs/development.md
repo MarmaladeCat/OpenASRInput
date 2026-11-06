@@ -6,6 +6,8 @@ For source maintainers. Users should read the [user guide](user-guide.md); accep
 
 ## Source environment
 
+Current-source installation and language behavior is in [installation.md](installation.md). `python scripts/release.py --source-digest` exposes the source fingerprint for an external bundle composer; it never imports another product. The public `openasrinput provision --handoff FILE` command consumes a recipient-private Portal handoff. Browser messages live in the product-owned `presentation/web/*messages.mjs` catalogs; user-content nodes are explicitly excluded from translation. UI tests switch both languages without resetting forms.
+
 Use Python 3.10+ and create a repository-local virtual environment:
 
 ```bash
@@ -49,7 +51,7 @@ Linux uses Ubuntu 22.04 baseline containers and PyInstaller 6.16.0. Windows uses
 
 For a docs-only preview, create `test-results/`, then run `python scripts/release.py --docs test-results/product-docs.zip`. All authored Markdown, images, and linked attachments retain their original bytes and relative paths. Flat releases include `release.md` / `release.zh-CN.md` beside identical README copies to keep language links valid.
 
-VERSION and tool metadata are **1.0.0**. Candidates go to `.cache/build/artifacts/<os>/<arch>/<variant>/`; `scripts/release.py` publishes successful candidates to `release/1.0.0/`, never dist/. The version directory contains flat packages, complete docs ZIP, bilingual READMEs, manifest, and SHA256SUMS.
+VERSION and tool metadata are **1.0.1**. Candidates go to `.cache/build/artifacts/<os>/<arch>/<variant>/`; `scripts/release.py` publishes successful candidates to `release/1.0.1/`, never dist/. The version directory contains flat packages, complete docs ZIP, bilingual READMEs, manifest, and SHA256SUMS.
 
 The publisher checks version, architecture, unique candidates, and hashes. Other platforms merge only with matching source provenance. Old receipts cannot establish new candidates after source/docs changes; rebuild relevant targets. Record builds and platform acceptance separately.
 

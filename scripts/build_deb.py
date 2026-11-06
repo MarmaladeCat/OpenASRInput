@@ -225,6 +225,8 @@ def build(output, framework="auto", native_build=None, runtime_dir=None):
         )
         control = stage / "DEBIAN"
         control.mkdir()
+        shutil.copy2(ROOT / "packaging/postinst", control / "postinst")
+        (control / "postinst").chmod(0o755)
         source_metadata = stage / "debian"
         source_metadata.mkdir()
         (source_metadata / "control").write_text(

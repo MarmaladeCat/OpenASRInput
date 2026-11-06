@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "openasrinput"
-version = "1.0.0"
+version = "1.0.1"
 description = "Independent dictation session and input-context core"
 license = {file = "LICENSE"}
 classifiers = ["License :: OSI Approved :: GNU General Public License v3 (GPLv3)"]

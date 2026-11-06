@@ -100,6 +100,7 @@ export class AudioCalibration {
       ['await-validation', 'verifying'].includes(state);
     byId('calibration-passage').textContent =
       this.job.passages?.[validation ? 'validation' : 'calibration'] || '';
+    byId('calibration-passage').translate = false;
     const measuringNoise = state.endsWith('noise');
     byId('calibration-passage').hidden = measuringNoise;
     byId('calibration-stage').textContent = measuringNoise
@@ -151,6 +152,7 @@ export class AudioCalibration {
         details.textContent = `${item.gain.toFixed(2)}× · ${item.highpassHz ? item.highpassHz + ' Hz 高通' : '无滤波'}${item.clippedSamples ? ' · 出现削波，不推荐' : ''}`;
         const transcript = document.createElement('p');
         transcript.textContent = item.transcript || '（无识别文本）';
+        transcript.translate = !item.transcript;
         card.append(title, details, transcript);
         results.append(card);
       }

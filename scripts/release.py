@@ -232,6 +232,18 @@ def collect(platform, arch):
                         "kind": "document",
                     }
                 )
+        for record in list(artifacts):
+            if record["kind"] == "installer":
+                sidecar = stage / (record["file"] + ".sha256")
+                sidecar.write_text(f"{record['sha256']}  {record['file']}\n", encoding="utf-8")
+                artifacts.append(
+                    {
+                        "file": sidecar.name,
+                        "bytes": sidecar.stat().st_size,
+                        "sha256": digest(sidecar),
+                        "kind": "checksum",
+                    }
+                )
         receipt = {
             "schemaVersion": 2,
             "product": name,
@@ -267,8 +279,13 @@ if __name__ == "__main__":
     parser.add_argument("--platform", choices=("linux", "windows"))
     parser.add_argument("--arch", choices=("amd64", "arm64"))
     parser.add_argument("--docs", type=Path, help="write only a documentation ZIP to this path")
+    parser.add_argument(
+        "--source-digest", action="store_true", help="print the current source fingerprint"
+    )
     args = parser.parse_args()
-    if args.docs:
+    if args.source_digest:
+        print(source_digest())
+    elif args.docs:
         if args.platform or args.arch:
             parser.error("--docs cannot be combined with --platform/--arch")
         document_archive(args.docs)

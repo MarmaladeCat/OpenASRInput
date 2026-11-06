@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import sys
 
 from .. import __version__
 
@@ -136,6 +137,11 @@ async def run_daemon(store, socket_path, overrides):
 
 
 def main():
+    if sys.argv[1:2] == ["provision"]:
+        from .provision import main as provision
+
+        del sys.argv[1]
+        return provision()
     parser = argparse.ArgumentParser(description="OpenASRInput exclusive cursor dictation")
     parser.add_argument("--version", action="version", version="OpenASRInput " + __version__)
     subcommands = parser.add_subparsers(dest="command")

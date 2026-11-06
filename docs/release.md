@@ -1,8 +1,8 @@
-# OpenASRInput 1.0.0 release notes
+# OpenASRInput 1.0.1 release notes
 
 **English** | [简体中文](release.zh-CN.md)
 
-Product and package versions are 1.0.0; public recognition protocol remains v1. Documentation is English-first with linked Chinese counterparts.
+Product and package versions are 1.0.1; public recognition protocol remains v1. Documentation is English-first with linked Chinese counterparts.
 
 ## Capabilities
 
@@ -13,9 +13,15 @@ Product and package versions are 1.0.0; public recognition protocol remains v1. 
 
 ## Downloads and reading
 
+Input requires [OpenASRPortal](https://github.com/MarmaladeCat/OpenASRPortal), locally or remotely. [Download Portal](https://github.com/MarmaladeCat/OpenASRPortal/releases) and follow its [configuration guide](https://github.com/MarmaladeCat/OpenASRPortal/blob/main/docs/user-guide.md). The Input release page is the intended home of combined Input + Portal installers.
+
 Choose Linux `*_linux_amd64_local-auto.deb` or `*_linux_arm64_local-auto.deb` for your CPU, or Windows `*_windows_amd64_native.msi`. Packages include private Python; Linux still needs the desktop's input framework.
 
-`OpenASRInput_1.0.0_docs.zip` contains complete bilingual authored documentation. Extract and start with README.md or docs/user-guide.md. manifest.json records source/platform; SHA256SUMS checks integrity. Build manifests are not platform certification.
+Each installer has an exact `filename.sha256` companion containing one checksum record. Local source builds also retain manifest.json and SHA256SUMS for the complete collected directory. Documentation archives contain the original bilingual pages and images. Build manifests are not platform certification.
+
+## Current-source changes awaiting review
+
+Windows x64 and Linux amd64/ARM64 combined installers, fixed per-user configuration beneath the OpenASR root, legacy migration, setup-on-demand after installation, and upper-right Chinese/English page switching are described in [installation.md](installation.md). The 1.0.1 candidates are available for maintainer review and manual testing before publication.
 
 ## Compatibility and upgrades
 

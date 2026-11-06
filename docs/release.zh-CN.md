@@ -1,8 +1,14 @@
-# OpenASRInput 1.0.0 版本说明
+# OpenASRInput 1.0.1 版本说明
 
 [English](release.md) | **简体中文**
 
-本产品版本与包工具元数据统一为 1.0.0，公开识别协议保持 v1。全部文档提供英文默认入口及对应中文链接。
+Input 需要本机或远程 [OpenASRPortal](https://github.com/MarmaladeCat/OpenASRPortal)。请从 [Portal 下载页](https://github.com/MarmaladeCat/OpenASRPortal/releases) 获取并按照 [配置手册](https://github.com/MarmaladeCat/OpenASRPortal/blob/main/docs/user-guide.zh-CN.md) 设置。Input Release 是合体安装包的计划分发入口；每个安装包配同名 `.sha256`，每份仅含该包的一行校验记录。
+
+## 当前源码待审核功能
+
+Windows x64、Linux amd64/ARM64 合体安装、OpenASR 公共根目录下的私有用户配置、旧配置迁移、安装后按需首次设置，以及右上角中英文切换，详见 [安装说明](installation.zh-CN.md)。1.0.1 候选供维护者审核与手动测试，审核后再正式发布。
+
+本产品版本与包工具元数据统一为 1.0.1，公开识别协议保持 v1。全部文档提供英文默认入口及对应中文链接。
 
 ## 本版能力
 
@@ -15,7 +21,7 @@
 
 Linux 选择匹配 CPU 的 `*_linux_amd64_local-auto.deb` 或 `*_linux_arm64_local-auto.deb`；Windows 选择 `*_windows_amd64_native.msi`。安装包自带私有 Python，Linux 仍需对应桌面输入法框架。
 
-同目录 `OpenASRInput_1.0.0_docs.zip` 是完整人工文档，解压后从 README.md 或 docs/user-guide.md 阅读。manifest.json 记录来源与平台，SHA256SUMS 用于完整性核对；构建清单不代表平台认证。
+同目录 `OpenASRInput_1.0.1_docs.zip` 是完整人工文档，解压后从 README.md 或 docs/user-guide.md 阅读。manifest.json 记录来源与平台，SHA256SUMS 用于完整性核对；构建清单不代表平台认证。
 
 ## 兼容与升级
 

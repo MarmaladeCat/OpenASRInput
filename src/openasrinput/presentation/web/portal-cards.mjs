@@ -1,3 +1,4 @@
+import { confirm } from './i18n.mjs';
 const $ = (id) => document.getElementById(id);
 const fields = ['id', 'name', 'url', 'apiKey', 'profileId'];
 const wire = (card) => Object.fromEntries(fields.map((key) => [key, card[key] || '']));
@@ -79,6 +80,7 @@ export class PortalCards {
       ? '已保存；留空保留本卡 Key'
       : '此 Portal 的独立识别 Key';
     form.querySelector('[data-role=title]').textContent = isNew ? '配置新 Portal 卡' : card.name;
+    form.querySelector('[data-role=title]').translate = isNew;
     form.querySelector('[data-action=save]').textContent = isNew
       ? '保存并新增 Portal 卡'
       : '保存此卡';

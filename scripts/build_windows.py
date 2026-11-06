@@ -261,14 +261,22 @@ def wix(payload, filename):
         Manufacturer="OpenASRInput",
         UpgradeCode=str(UPGRADE),
     )
-    element(product, "Package", InstallerVersion="500", Compressed="yes", InstallScope="perUser")
+    element(
+        product,
+        "Package",
+        InstallerVersion="500",
+        Compressed="yes",
+        InstallPrivileges="elevated",
+    )
     element(product, "Property", Id="ARPNOMODIFY", Value="1")
     element(product, "Property", Id="ARPNOREPAIR", Value="1")
     # The visible Apps entry must use our data-choice/stop coordinator, not /x.
     element(product, "Property", Id="ARPSYSTEMCOMPONENT", Value="1")
     element(product, "Property", Id="OPENASRINPUT_NO_LAUNCH", Secure="yes")
+    element(product, "Property", Id="OPENASR_PREVIOUS_INSTALLATION", Secure="yes")
     element(product, "Property", Id="REMOVEUSERDATA", Value="0", Secure="yes")
-    state = element(product, "Property", Id="INPUTDATADIR", Secure="yes")
+    element(product, "Property", Id="INPUTDATADIR", Secure="yes")
+    state = element(product, "Property", Id="LEGACYINPUTDATADIR", Secure="yes")
     element(
         state,
         "RegistrySearch",
@@ -284,7 +292,7 @@ def wix(payload, filename):
         "CustomAction",
         Id="DefaultInputData",
         Property="INPUTDATADIR",
-        Value="[AppDataFolder]OpenASRInput",
+        Value="[CommonAppDataFolder]OpenASR\\Input\\[UserSID]",
     )
     (payload / "uninstall.ini").write_text(
         "OpenASRInput\n{" + product.attrib["Id"] + "}\n", encoding="utf-8"
@@ -326,8 +334,28 @@ def wix(payload, filename):
     sequence = element(product, "InstallExecuteSequence")
     windows_replacement["author"](element, product, sequence, "input", "payload/Replacement.CA.dll")
     element(
-        sequence, "Custom", Action="DefaultInputData", After="CostFinalize"
+        product,
+        "CustomAction",
+        Id="RestoreInputData",
+        Property="INPUTDATADIR",
+        Value="[LEGACYINPUTDATADIR]",
+    )
+    element(
+        sequence, "Custom", Action="RestoreInputData", After="CostFinalize"
+    ).text = "NOT INPUTDATADIR AND LEGACYINPUTDATADIR AND REMOVE"
+    element(
+        sequence, "Custom", Action="DefaultInputData", After="RestoreInputData"
     ).text = "NOT INPUTDATADIR"
+    element(
+        product,
+        "CustomAction",
+        Id="DefaultLegacyInputData",
+        Property="LEGACYINPUTDATADIR",
+        Value="[AppDataFolder]OpenASRInput",
+    )
+    element(
+        sequence, "Custom", Action="DefaultLegacyInputData", After="DefaultInputData"
+    ).text = "NOT LEGACYINPUTDATADIR"
     element(
         product,
         "CustomAction",
@@ -341,6 +369,7 @@ def wix(payload, filename):
     element(sequence, "RemoveExistingProducts", Sequence="1501").text = "OLDVERSION"
     target = element(product, "Directory", Id="TARGETDIR", Name="SourceDir")
     element(target, "Directory", Id="System64Folder")
+    element(target, "Directory", Id="CommonAppDataFolder")
     local = element(target, "Directory", Id="LocalAppDataFolder")
     programs = element(local, "Directory", Id="AppPrograms", Name="Programs")
     install = element(programs, "Directory", Id="INSTALLDIR", Name="OpenASRInput")
@@ -509,6 +538,34 @@ def wix(payload, filename):
     element(
         sequence, "Custom", Action="StopInput", Before="InstallValidate"
     ).text = 'Installed AND (REMOVE~="ALL" OR REINSTALL OR UPGRADINGPRODUCTCODE)'
+    prepare = (
+        '"[System64Folder]WindowsPowerShell\\v1.0\\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass '
+        '-File "[INSTALLDIR]prepare_data.ps1" -DataDir "[INPUTDATADIR]" -UserSid "[UserSID]" '
+        '-LegacyDataDir "[LEGACYINPUTDATADIR]" -PreviousInstallation "[Installed][OLDVERSION][OPENASR_PREVIOUS_INSTALLATION]"'
+    )
+    element(
+        product,
+        "CustomAction",
+        Id="SetPrepareInputState",
+        Property="PrepareInputState",
+        Value=prepare,
+    )
+    element(
+        product,
+        "CustomAction",
+        Id="PrepareInputState",
+        BinaryKey="WixCA",
+        DllEntry="WixQuietExec",
+        Execute="deferred",
+        Return="check",
+        Impersonate="no",
+    )
+    element(
+        sequence, "Custom", Action="SetPrepareInputState", After="InstallFiles"
+    ).text = "NOT REMOVE"
+    element(
+        sequence, "Custom", Action="PrepareInputState", After="SetPrepareInputState"
+    ).text = "NOT REMOVE"
     element(
         product,
         "CustomAction",
@@ -520,7 +577,7 @@ def wix(payload, filename):
     )
     element(
         sequence, "Custom", Action="Launch", After="InstallFinalize"
-    ).text = "NOT Installed AND NOT OPENASRINPUT_NO_LAUNCH"
+    ).text = "NOT Installed AND NOT REMOVE AND UILevel >= 5 AND NOT OPENASRINPUT_NO_LAUNCH"
     command = (
         '"[System64Folder]WindowsPowerShell\\v1.0\\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass '
         '-File "[INSTALLDIR]remove_data.ps1" -DataDir "[INPUTDATADIR]"'
@@ -744,6 +801,7 @@ def main():
         shutil.copy2(ROOT / "packaging/windows/launch.py", payload / "app/launch.py")
         shutil.copy2(ROOT / "LICENSE", payload / "LICENSE.txt")
         shutil.copy2(ROOT / "packaging/windows/remove_data.ps1", payload / "remove_data.ps1")
+        shutil.copy2(ROOT / "packaging/windows/prepare_data.ps1", payload / "prepare_data.ps1")
         csc = (
             Path(os.environ.get("WINDIR", r"C:\Windows"))
             / "Microsoft.NET/Framework64/v4.0.30319/csc.exe"

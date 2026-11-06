@@ -6,6 +6,8 @@
 
 ## 源码环境
 
+当前安装与语言行为见 [安装说明](installation.zh-CN.md)。`python scripts/release.py --source-digest` 向外部合体构建器公开当前源码指纹，不导入其他产品。公开命令 `openasrinput provision --handoff 文件` 消费仅接收用户可读的 Portal 交接文件。网页文案位于产品自身 `presentation/web/*messages.mjs`，用户内容节点明确排除翻译；UI 测试验证切换语言不重置表单。
+
 Python 3.10+，在仓库根目录创建虚拟环境：
 
 ```bash
@@ -49,7 +51,7 @@ Linux 使用 Ubuntu 22.04 基线容器和 PyInstaller 6.16.0；Windows 使用 Py
 
 单独预览文档时，先创建 `test-results/`，再运行 `python scripts/release.py --docs test-results/product-docs.zip`。全部人工 Markdown、图片和链接附件保留原始字节与相对目录。平铺发行目录在相同内容的 README 副本旁保留 `release.md` / `release.zh-CN.md`，确保语言链接有效。
 
-产品版本与工具元数据由 VERSION 指定为 **1.0.0**。候选包位于 `.cache/build/artifacts/<系统>/<架构>/<变体>/`，成功后由 `scripts/release.py` 发布到 `release/1.0.0/`，不生成产品 dist/。版本目录平铺软件包、完整 docs ZIP、中英文 README、清单与 SHA256SUMS。
+产品版本与工具元数据由 VERSION 指定为 **1.0.1**。候选包位于 `.cache/build/artifacts/<系统>/<架构>/<变体>/`，成功后由 `scripts/release.py` 发布到 `release/1.0.1/`，不生成产品 dist/。版本目录平铺软件包、完整 docs ZIP、中英文 README、清单与 SHA256SUMS。
 
 发布器校验版本、架构、唯一候选和哈希，同源的其他平台包可合并。源码或文档变化后不能拿旧收据证明新候选；应重新构建相应目标。平台验收和构建分开记录。
 

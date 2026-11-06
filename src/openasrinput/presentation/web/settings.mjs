@@ -1,3 +1,4 @@
+import { confirm, sourceText, userOption, userText } from './i18n.mjs';
 import { PersonalHotwords, wordIdentity } from './personal-hotwords.mjs';
 import { ModelCards } from './model-cards.mjs';
 import { PortalCards } from './portal-cards.mjs';
@@ -149,7 +150,7 @@ function chooseValue(id, value, label = value) {
     field.tagName === 'SELECT' &&
     ![...field.options].some((option) => option.value === String(value))
   ) {
-    field.add(new Option(String(label), String(value)));
+    field.add(userOption(String(label), String(value)));
   }
   field.value = String(value);
 }
@@ -206,7 +207,7 @@ function preview() {
   byId('preview-layout-label').textContent =
     options.position === 'hidden'
       ? '面板已隐藏（不影响输入）'
-      : byId('position').selectedOptions[0].textContent + ' · 三行预览';
+      : sourceText(byId('position').selectedOptions[0]) + ' · 三行预览';
   card.style.setProperty('--panel-radius', options.radius + 'px');
   card.style.setProperty('--panel-font', options.fontSize + 'px');
   card.style.zoom = options.scale;
@@ -341,6 +342,7 @@ function renderProfiles() {
       title = document.createElement('strong'),
       note = document.createElement('p');
     title.textContent = profile.title;
+    title.translate = !profiles.includes(profile);
     note.textContent =
       profile.note ||
       `${profile.id} · ${profile.provider} · ${profile.latencyClass === 'streaming' ? '实时流式' : profile.latencyClass === 'segmented' ? '分段识别' : '延迟以服务能力为准'}`;
@@ -420,8 +422,10 @@ async function refreshStatus() {
       : '输入服务未运行；设置将在启动时应用。';
     if (panel) {
       const label =
-        [...byId('position').options].find((option) => option.value === panel.position)
-          ?.textContent || panel.position;
+        sourceText(
+          [...byId('position').options].find((option) => option.value === panel.position) ||
+            document.createElement('span')
+        ) || panel.position;
       panelStatus = `原生面板：${panel.backend} · ${label} · 透明度 ${panel.transparency}%`;
       if (!panel.active) panelStatus += ' · 当前没有显示会话';
       if (panel.backend === 'xwayland-status' && !panel.gnomeLayoutV2)
@@ -557,7 +561,7 @@ byId('devices-refresh').onclick = async () => {
   try {
     const result = await api('audio/devices', 'POST', {});
     byId('device').replaceChildren(new Option('系统默认设备', ''));
-    result.devices.forEach((device) => byId('device').add(new Option(device.title, device.id)));
+    result.devices.forEach((device) => byId('device').add(userOption(device.title, device.id)));
     chooseValue('device', selected);
     byId('devices-status').textContent =
       `已读取 ${result.devices.length} 个设备。设备列表不触发录音。`;
@@ -603,7 +607,10 @@ function renderRecommendations() {
     row.dataset.word = term.text;
     const label = document.createElement('span');
     const enabled = selected.has(wordIdentity(term.text));
-    label.textContent = `${term.text} · 权重 ${term.weight || 4} · ${enabled ? '已在热词表中' : '候选词'}`;
+    label.append(
+      userText(term.text),
+      ` · 权重 ${term.weight || 4} · ${enabled ? '已在热词表中' : '候选词'}`
+    );
     const toggle = document.createElement('button');
     toggle.type = 'button';
     toggle.textContent = enabled ? '已加入' : '加入热词表';
@@ -654,7 +661,7 @@ async function loadDictionaryCatalog(force = false) {
   for (const source of dictionaryCatalog.sources.filter(
     (source) => source.kind === 'portal-public'
   ))
-    byId('dictionary-source').add(new Option(source.title, source.id));
+    byId('dictionary-source').add(userOption(source.title, source.id));
   if (dictionaryCatalog.sources.some((source) => source.id === previous))
     byId('dictionary-source').value = previous;
   byId('dictionary-source').onchange();
@@ -674,8 +681,10 @@ async function loadRecommendations(sourceId) {
       configRevision: hotwords.configRevision
     });
     showRecommendations(result);
-    byId('dictionary-report').textContent =
-      `${result.source.title} · ${dictionaryReport(result.report)}`;
+    byId('dictionary-report').replaceChildren(
+      userText(result.source.title),
+      ` · ${dictionaryReport(result.report)}`
+    );
     notice('推荐表已载入候选区，点击“加入热词表”后保存生效。');
   } catch (error) {
     notice(error.message, 'error');
@@ -691,6 +700,7 @@ byId('dictionary-source').onchange = () => {
   byId('dictionary-source-note').textContent = source
     ? `${source.description} · ${source.license}`
     : '';
+  byId('dictionary-source-note').translate = false;
 };
 byId('dictionary-online').onclick = () => {
   const sourceId = byId('dictionary-source').value;

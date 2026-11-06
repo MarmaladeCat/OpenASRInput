@@ -208,7 +208,10 @@ async function run() {
     if (details.level === 'error') rendererErrors.push(details.message);
   });
   await window.loadURL(settings.settingsUrl);
+  await require('./language_ui.cjs').language(window, 'zh-CN');
   await wait('document.getElementById("feedback").textContent === "设置已载入。"');
+  await require('./language_ui.cjs').verifyLanguages(window);
+  await wait('document.getElementById("feedback").textContent === "已重新载入保存的设置。"');
   assert.deepEqual(calls, []);
   assert.equal(fs.existsSync(config), false);
   assert.equal(await js('document.querySelectorAll("#settings-nav [role=tab]").length'), 7);

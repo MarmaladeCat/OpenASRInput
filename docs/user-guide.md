@@ -2,7 +2,7 @@
 
 **English** | [简体中文](user-guide.zh-CN.md)
 
-Version **1.0.0**. This guide covers first installation, daily dictation, selection editing, multiple services, and recovery. See [API](API.md) for integration and [development](development.md) for source builds. Licensed under [GPL v3](../LICENSE). English descriptions below retain key Chinese button labels where useful for locating controls in the current UI.
+Version **1.0.1**. This guide covers first installation, daily dictation, selection editing, multiple services, and recovery. See [API](API.md) for integration and [development](development.md) for source builds. Licensed under [GPL v3](../LICENSE). English descriptions below retain key Chinese button labels where useful for locating controls in the current UI.
 
 ## 1. Logical architecture
 
@@ -36,17 +36,17 @@ Voice editing of selected text also needs a separate text-model card. Portal rec
 
 Windows uses x64 MSI; Debian/Ubuntu Linux uses amd64 or ARM64 deb. `amd64` means ordinary Intel/AMD 64-bit PCs; `arm64` means ARM64 devices. Packages include private Python, so users need not install it separately.
 
-Download the matching file and `SHA256SUMS`. Linux can run `sha256sum -c SHA256SUMS` in the download directory. If downloading only some attachments, verify those entries; missing other files does not mean the downloaded file is corrupt. On Windows:
+Download the matching file and its exact `filename.sha256` companion. Each checksum file contains one installer record. Linux can run `sha256sum -c filename.sha256` in the download directory. On Windows:
 
 ```powershell
-Get-FileHash .\OpenASRInput_1.0.0_windows_amd64_native.msi -Algorithm SHA256
+Get-FileHash .\OpenASRInput_1.0.1_windows_amd64_native.msi -Algorithm SHA256
 ```
 
 Compare the same-name manifest entry. Preserve directories when extracting documentation; images live in `docs/images/`.
 
 ### 2.2 Windows installation and first run
 
-1. Run `OpenASRInput_1.0.0_windows_amd64_native.msi` and complete the wizard.
+1. Run `OpenASRInput_1.0.1_windows_amd64_native.msi` and complete the wizard.
 2. Open OpenASRInput settings from Start. Standalone Input MSI does not include Portal; use your administrator's address for an existing remote Portal.
 3. In Windows Settings → Privacy & security → Microphone, permit desktop apps and confirm the device is not muted in Sound settings.
 4. Check the Portal card, microphone, and native bridge as described below.
@@ -61,7 +61,7 @@ Real settings service extracted from the 1.0.0 MSI on Windows 11 amd64, using te
 In the download directory (substitute the ARM64 file when appropriate):
 
 ```bash
-sudo apt install ./OpenASRInput_1.0.0_linux_amd64_local-auto.deb
+sudo apt install ./OpenASRInput_1.0.1_linux_amd64_local-auto.deb
 openasrinput settings
 ```
 
@@ -186,7 +186,7 @@ For self-signed deployments, establish trust using the administrator's public ce
 
 ### 4.2 Configuration and isolated instances
 
-Defaults: Windows `%APPDATA%\OpenASRInput\input.json`; Linux `$XDG_CONFIG_HOME/openasrinput/input.json`, or `~/.config/openasrinput/input.json` without XDG. Connection and About shows the actual path.
+Current-source installed defaults are Windows `%ProgramData%\OpenASR\Input\<SID>\input.json` and Linux `/var/lib/openasr/input/<uid>/input.json`. Earlier packages and source-only use fall back to `%APPDATA%\OpenASRInput` or the XDG configuration directory. Connection and About shows the actual path. See [installation and language selection](installation.md) for combined packages, migration, first setup, and retained-data reinstallation.
 
 `OPENASRINPUT_CONFIG` selects another configuration; `OPENASRINPUT_SOCKET` isolates the bridge. Use these for genuinely separate test instances and keep settings/daemon values consistent, or the page may save a different instance's settings. Configuration contains credentials; remove secrets before sharing.
 

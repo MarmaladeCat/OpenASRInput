@@ -21,11 +21,8 @@ os.environ.setdefault(
     framework_file.read_text().strip() if framework_file.exists() else "auto",
 )
 sys.path.insert(0, app_root)
-home = Path.home()
-os.environ.setdefault(
-    "OPENASRINPUT_CONFIG",
-    str(Path(os.environ.get("XDG_CONFIG_HOME", home / ".config")) / "openasrinput/input.json"),
-)
+# Let ConfigStore select the installed per-UID root and migrate legacy files.
+# An explicit OPENASRINPUT_CONFIG supplied by the caller still takes precedence.
 os.environ.setdefault(
     "OPENASRINPUT_DEFAULT_SOCKET",
     str(Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "openasrinput.sock"),

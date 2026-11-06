@@ -734,3 +734,23 @@ textarea {
 #calibration-results {
   min-width: 0;
 }
+.header-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.language-switch {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 0.2rem;
+}
+.language-switch button {
+  white-space: nowrap;
+}
+.language-switch button[aria-pressed='true'] {
+  font-weight: 700;
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}

@@ -53,7 +53,12 @@ class BrandingPackagingTests(unittest.TestCase):
                 root = ET.parse(filename).getroot()
                 ns = {"w": "http://schemas.microsoft.com/wix/2006/wi"}
                 self.assertFalse(root.findall(".//w:ServiceInstall", ns))
-                self.assertEqual(root.find(".//w:Package", ns).get("InstallScope"), "perUser")
+                package = root.find(".//w:Package", ns)
+                # No ALLUSERS property means current-user installation. Explicit
+                # elevation prepares the machine's private configuration root.
+                self.assertIsNone(package.get("InstallScope"))
+                self.assertEqual(package.get("InstallPrivileges"), "elevated")
+                self.assertIsNone(root.find('.//w:Property[@Id="ALLUSERS"]', ns))
                 self.assertEqual(bool(root.findall(".//w:Icon", ns)), branded)
                 for shortcut in root.findall(".//w:Shortcut", ns):
                     self.assertEqual(shortcut.get("Icon"), "ProductLogo" if branded else None)

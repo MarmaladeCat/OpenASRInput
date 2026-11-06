@@ -35,7 +35,7 @@ The application still uses its own runtime. Each run creates new reports/logs un
 Package check example, after building the matching target:
 
 ```bash
-python tests/test_portable_deb.py .cache/build/artifacts/linux/amd64/auto/openasrinput_1.0.0_amd64.deb
+python tests/test_portable_deb.py .cache/build/artifacts/linux/amd64/auto/openasrinput_1.0.1_amd64.deb
 ```
 
 ## Result rules

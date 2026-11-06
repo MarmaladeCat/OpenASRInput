@@ -1,3 +1,4 @@
+import { confirm } from './i18n.mjs';
 const $ = (id) => document.getElementById(id);
 const fields = ['id', 'name', 'provider', 'url', 'model', 'apiKey'];
 const wire = (card) => Object.fromEntries(fields.map((key) => [key, card[key] || '']));
@@ -89,6 +90,7 @@ export class ModelCards {
       ? 'Key 已保存，不回显；其他模型卡不会继承此 Key。'
       : '新增卡必须手动填写 Key。';
     form.querySelector('[data-role="title"]').textContent = isNew ? '配置新模型卡' : card.name;
+    form.querySelector('[data-role="title"]').translate = isNew;
     form.querySelector('[data-action="save"]').textContent = isNew
       ? '保存并新增模型卡'
       : '保存此卡配置';

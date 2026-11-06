@@ -178,7 +178,9 @@ export class PersonalHotwords {
         row.append(td);
         return td;
       };
-      cell().textContent = term.text;
+      const word = cell();
+      word.translate = false;
+      word.textContent = term.text;
       const weight = document.createElement('input');
       Object.assign(weight, {
         type: 'number',

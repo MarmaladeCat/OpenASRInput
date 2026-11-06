@@ -2,7 +2,7 @@
 
 [English](user-guide.md) | **简体中文**
 
-适用版本：**1.0.0**。本手册从首次安装讲到日常听写、选区修改、多服务切换和故障恢复。接口开发见 [API](API.zh-CN.md)，源码构建见 [开发说明](development.zh-CN.md)。项目采用 [GPL v3](../LICENSE)。
+适用版本：**1.0.1**。本手册从首次安装讲到日常听写、选区修改、多服务切换和故障恢复。接口开发见 [API](API.zh-CN.md)，源码构建见 [开发说明](development.zh-CN.md)。项目采用 [GPL v3](../LICENSE)。
 
 ## 1. 软件的逻辑架构
 
@@ -36,17 +36,17 @@ Input 负责录音、显示预览和向光标所在位置提交文字。Portal �
 
 Windows 使用 x64 MSI；Linux Debian/Ubuntu 系使用 amd64 或 ARM64 deb。`amd64` 对应常见 Intel/AMD 64 位电脑，`arm64` 对应 ARM64 设备。安装包携带 Input 私有 Python，普通用户无需另外安装 Python。
 
-从发行目录取对应文件及 `SHA256SUMS`。Linux 可在下载目录运行 `sha256sum -c SHA256SUMS`；只下载了部分附件时，只核对所需文件，缺少其他文件不表示已下载文件损坏。Windows 用 PowerShell：
+从发行目录取安装包及其同名 `文件名.sha256`，每份校验文件只含对应安装包的一行记录。Linux 在下载目录运行 `sha256sum -c 文件名.sha256`。Windows 用 PowerShell：
 
 ```powershell
-Get-FileHash .\OpenASRInput_1.0.0_windows_amd64_native.msi -Algorithm SHA256
+Get-FileHash .\OpenASRInput_1.0.1_windows_amd64_native.msi -Algorithm SHA256
 ```
 
 将输出与清单的同名条目比较。完整文档 ZIP 解压时保留目录结构，图片在 `docs/images/`。
 
 ### 2.2 Windows 安装与首次启动
 
-1. 运行 `OpenASRInput_1.0.0_windows_amd64_native.msi`，按向导完成安装。
+1. 运行 `OpenASRInput_1.0.1_windows_amd64_native.msi`，按向导完成安装。
 2. 从开始菜单打开 OpenASRInput 设置。独立 Input MSI 不包含 Portal；已有远程 Portal 的用户直接使用管理员提供的地址。
 3. 在 Windows“设置 → 隐私和安全性 → 麦克风”允许桌面应用访问麦克风，并在系统声音设置确认设备未静音。
 4. 按下文完成 Portal 卡、麦克风、原生桥接状态三项检查。
@@ -61,7 +61,7 @@ Get-FileHash .\OpenASRInput_1.0.0_windows_amd64_native.msi -Algorithm SHA256
 在下载目录执行（ARM64 换成相应文件）：
 
 ```bash
-sudo apt install ./OpenASRInput_1.0.0_linux_amd64_local-auto.deb
+sudo apt install ./OpenASRInput_1.0.1_linux_amd64_local-auto.deb
 openasrinput settings
 ```
 
@@ -186,7 +186,7 @@ Linux 的“普通雾凇键盘输入使用内联预编辑”只针对普通拼�
 
 ### 4.2 配置文件与隔离实例
 
-默认配置文件为 Windows `%APPDATA%\OpenASRInput\input.json`，Linux `$XDG_CONFIG_HOME/openasrinput/input.json`（未设 XDG 时为 `~/.config/openasrinput/input.json`）。以“连接与关于”显示的路径为准。
+当前源码安装后的默认配置为 Windows `%ProgramData%\OpenASR\Input\<SID>\input.json`、Linux `/var/lib/openasr/input/<uid>/input.json`。早期安装包及未安装公共根目录的源码运行回退到 `%APPDATA%\OpenASRInput` 或 XDG 配置目录，以“连接与关于”显示的实际路径为准。合体包、旧配置迁移、首次设置与保留配置重装见 [安装与语言选择](installation.zh-CN.md)。
 
 `OPENASRINPUT_CONFIG` 可指定另一份配置，`OPENASRINPUT_SOCKET` 用于隔离桥接。只在确实需要独立测试实例时改用这些入口，且保持设置进程与守护进程一致；否则会出现“网页保存了，但实际录音没变”的现象。配置包含连接凭据，复制给他人前先移除秘密。
 

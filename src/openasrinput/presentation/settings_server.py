@@ -111,6 +111,9 @@ class SettingsServer:
         app.router.add_get("/{name:model-cards\\.mjs}", self.asset)
         app.router.add_get("/{name:portal-cards\\.mjs}", self.asset)
         app.router.add_get("/{name:audio-calibration\\.mjs}", self.asset)
+        app.router.add_get(
+            "/{name:(?:i18n|messages|dynamic-messages|error-messages)\\.mjs}", self.asset
+        )
         app.router.add_get("/api/config", self.config)
         app.router.add_get("/api/health", self.health)
         app.router.add_post("/api/settings/open", self.open_browser)
