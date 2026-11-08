@@ -23,6 +23,25 @@ python scripts/test.py run --suite ui
 The application still uses its own runtime. Each run creates new reports/logs under test-results/functional/.
 `--case <ID>` selects a case, not whole-product acceptance.
 
+### Windows editor compatibility
+
+`windows-native` includes actual TextBox/RichTextBox/WebView2 journeys, injected Shift+Space start requests with a text caret, the same controls in a `POWERPNT`-named disposable fixture (`native-office-controls`), and headless target/native-range rules (`native-target-rules`). The named fixture catches process-wide misrouting; it is not Microsoft Office. Headless rules cover optional-provider failures, missing geometry, native Office selection fallback, explicit read-only rejection, focus changes, Unicode range replacement, and ambiguous setters.
+
+For package-native acceptance, run `tests/functional/check_windows_editor.py --bridge '<candidate>/native/OpenASRInputBridge.exe'` with the product test Python and `PYTHONPATH=src;tests`; repeat with `--office-host`. The environment report records the actual bridge assembly hash.
+
+The disposable editor also hosts a real WPF text box whose optional Value getter can fail before or after insertion while TextPattern still works. Verify selected-position Unicode insertion, idempotent replay, panel-only preview and zero writes when all confirmation channels are unavailable, and read-only/recovery transitions across WinForms, WPF, and Chromium. Headless rules independently fault value/text/selection/count capabilities and trigger focus changes inside provider calls; they execute the actual evidence and continuation code. Missing capability is not permission to ignore explicit protection or to replay an uncertain write.
+
+For real Office, explicitly run on an isolated interactive desktop with Microsoft PowerPoint installed:
+
+```powershell
+python scripts/test.py setup --suite windows-office
+python scripts/test.py run --suite windows-office --execution-host virtual-machine
+# To check an extracted current candidate instead of the source-built bridge:
+python tests/functional/check_windows_powerpoint.py --bridge '<candidate>/native/OpenASRInputBridge.exe'
+```
+
+The test creates its own disposable presentation under test-results/ and covers text boxes, empty title placeholders, table cells, normal/page notes, Unicode/paragraphs, selection-only replacement, preview revision/cancellation, long finals, and cross-shape/cell focus isolation. Missing PowerPoint is blocked with a nonzero exit, never a skip/pass. Keep `native-powerpoint-result.json`, the runner log, and the sandbox captures; record the exact Office version and bridge hashes. Permanent Office editions and Microsoft 365 require separate runs. Check physical Shift+Space with a blinking caret and real microphone separately from bridge-protocol tests.
+
 ## Required behavior
 
 | Layer                            | Coverage                                                                                                                                                              |
@@ -35,7 +54,7 @@ The application still uses its own runtime. Each run creates new reports/logs un
 Package check example, after building the matching target:
 
 ```bash
-python tests/test_portable_deb.py .cache/build/artifacts/linux/amd64/auto/openasrinput_1.0.1_amd64.deb
+python tests/test_portable_deb.py .cache/build/artifacts/linux/amd64/auto/openasrinput_1.0.2_amd64.deb
 ```
 
 ## Result rules

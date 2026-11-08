@@ -36,4 +36,49 @@ Check(target.Same(identity) && Scene.GeometryReads == 0,
 Scene.ReadOnly = true;
 Check(Target.Read() == null && Target.Read(includeGeometry: false) == null,
     "both positioning and authorization reject readonly targets");
+Scene.Reset();
+Scene.ThrowValue = true;
+Check(Read().CaretKnown, "a failing optional ValuePattern does not mask a writable TextPattern");
+Scene.ThrowBounds = true;
+Check(Read().CaretKnown, "a missing editor rectangle does not mask a valid text caret");
+Scene.NoGeometry = true;
+Check(!Read().CaretKnown, "an editable target without geometry still permits dictation with panel fallback");
+Scene.ThrowBounds = false;
+Scene.EmptyBounds = true;
+Check(!Read().CaretKnown, "empty provider bounds are optional too");
+foreach (bool password in new[] { false, true })
+{
+    Scene.Password = password;
+    Scene.Disabled = !password;
+    Check(Target.Read() == null && Target.Read(includeGeometry: false) == null,
+        "optional-provider failures never authorize password/disabled fields");
+}
+Scene.Reset();
+Scene.MoveFocus = true;
+Check(Target.Read() == null, "focus changing to a sibling in the same HWND during geometry revokes the snapshot");
+Scene.Reset();
+Scene.ValueReadOnly = Scene.OfficeEditing = true;
+Check(Target.Read() == null && Scene.OfficeQueries == 0,
+    "an explicit ValuePattern readonly result cannot be overridden by TextPattern or Office");
+Scene.ValueReadOnly = false;
+Scene.ReadOnly = true;
+Check(Target.Read() == null && Scene.OfficeQueries == 0, "explicit text readonly also prevents Office fallback");
+for (int provider = 0; provider < 4; provider++)
+{
+    Scene.Reset();
+    Scene.MissingText = provider == 0;
+    Scene.ThrowText = provider == 1;
+    Scene.UnknownReadOnly = provider == 2;
+    Scene.NoSelection = provider == 3;
+    Check(Target.Read() == null, "no writable evidence means no authorization for arbitrary custom controls");
+    Scene.OfficeEditing = true;
+    Check(Target.Read() != null && Target.Read(includeGeometry: false) != null,
+        "native Office text selection authorizes legacy UIA providers at begin and revalidation");
+    Scene.OfficeEditing = false;
+    Check(Target.Read() == null, "leaving Office text edit mode revokes authorization even in the same HWND");
+    Scene.OfficeEditing = Scene.Password = true;
+    Check(Target.Read() == null, "native Office selection cannot bypass a password field");
+}
 Console.WriteLine("PASS headless Target: multiline selection endpoint, caret start/middle/end, RTL, native validation, missing bounds and geometry-free identity checks");
+OfficeRangeTests.Run();
+InsertionEvidenceTests.Run();

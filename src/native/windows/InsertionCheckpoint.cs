@@ -12,14 +12,16 @@ internal sealed record InsertionCheckpoint(string Text, TextPatternRange Range)
         try
         {
             var element = AutomationElement.FocusedElement;
-            if (element == null || string.Join(".", element.GetRuntimeId()) != target.Identity ||
+            if (!target.InsertionFocusCurrent() || element == null || string.Join(".", element.GetRuntimeId()) != target.Identity ||
                 !element.TryGetCurrentPattern(TextPattern.Pattern, out var value))
                 return null;
             var pattern = (TextPattern)value;
             var ranges = pattern.GetSelection();
             string text = pattern.DocumentRange.GetText(65537);
-            return ranges.Length == 1 && text.Length <= 65536
-                ? new(text, ranges[0].Clone()) : null;
+            if (ranges.Length != 1 || text.Length > 65536)
+                return null;
+            var checkpoint = new InsertionCheckpoint(text, ranges[0].Clone());
+            return target.InsertionFocusCurrent() ? checkpoint : null;
         }
         catch { return null; }
     }

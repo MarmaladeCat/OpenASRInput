@@ -108,7 +108,9 @@ internal static class PowerPointTests
         bool ownedApplication = false;
         try
         {
-            app = Activator.CreateInstance(Type.GetTypeFromProgID("PowerPoint.Application")!);
+            var type = Type.GetTypeFromProgID("PowerPoint.Application") ??
+                throw new InvalidOperationException("BLOCKED: Microsoft PowerPoint is not installed");
+            app = Activator.CreateInstance(type);
             ownedApplication = app!.Presentations.Count == 0;
             app.Visible = -1;
             presentation = app.Presentations.Add(-1);
@@ -225,6 +227,18 @@ internal static class PowerPointTests
             bridge.Request("CLEAR", lease);
             Console.WriteLine("PASS empty text box");
 
+            shape.TextFrame.TextRange.Text = "前缀后缀";
+            shape.TextFrame.TextRange.Characters(1, 2).Font.Bold = -1;
+            shape.TextFrame.TextRange.Characters(3, 0).Select();
+            lease = Begin();
+            Commit(lease, "paragraphs", "第一段🙂\r\n第二段\n第三段");
+            Check((string)shape.TextFrame.TextRange.Text == "前缀第一段🙂\r第二段\r第三段后缀",
+                "CRLF/LF normalize without losing paragraphs or surrounding text");
+            Check((int)shape.TextFrame.TextRange.Characters(1, 2).Font.Bold == -1,
+                "Unselected prefix formatting survives insertion");
+            bridge.Request("CLEAR", lease);
+            Console.WriteLine("PASS paragraphs and surrounding formatting");
+
             shape.Select(-1);
             shape.TextFrame.TextRange.Text = "第一行中文\r第二行目标光标";
             shape.TextFrame.TextRange.Characters(9, 0).Select();
@@ -306,6 +320,35 @@ internal static class PowerPointTests
             app.ActiveWindow.Selection.Unselect();
             Rejected("slide canvas");
 
+            dynamic table = slide.Shapes.AddTable(2, 2, 100, 160, 500, 160).Table;
+            dynamic cell = table.Cell(1, 1).Shape;
+            dynamic otherCell = table.Cell(1, 2).Shape;
+            cell.TextFrame.TextRange.Text = "单元格旧文字";
+            otherCell.TextFrame.TextRange.Text = "相邻单元格";
+            cell.TextFrame.TextRange.Characters(4, 3).Select();
+            lease = Begin();
+            Commit(lease, "table-replace", "新文字🙂");
+            Check((string)cell.TextFrame.TextRange.Text == "单元格新文字🙂", "Table cell selection replacement");
+            Commit(lease, "table-append", "追加");
+            Check((string)cell.TextFrame.TextRange.Text == "单元格新文字🙂追加", "Table cell continuation");
+            otherCell.TextFrame.TextRange.Characters(1, 0).Select();
+            Thread.Sleep(250);
+            Check(bridge.Request("COMMIT", lease, "table-late", Hex("不得串格")) == "stale", "Table cell focus isolation");
+            Check((string)otherCell.TextFrame.TextRange.Text == "相邻单元格", "Adjacent cell remains unchanged");
+            bridge.Request("CLEAR", lease);
+            Console.WriteLine("PASS table cells and cross-cell focus isolation");
+
+            dynamic placeholderSlide = presentation.Slides.Add(2, 1); // ppLayoutTitle
+            app.ActiveWindow.View.GotoSlide(2);
+            dynamic title = placeholderSlide.Shapes.Title;
+            title.TextFrame.TextRange.Characters(1, 0).Select();
+            lease = Begin();
+            Commit(lease, "empty-placeholder", "标题占位符🙂");
+            Check((string)title.TextFrame.TextRange.Text == "标题占位符🙂", "Empty title placeholder insertion");
+            bridge.Request("CLEAR", lease);
+            Console.WriteLine("PASS empty title placeholder");
+            app.ActiveWindow.View.GotoSlide(1);
+
             app.ActiveWindow.ViewType = 3; // ppViewNotesPage, disposable presentation only.
             dynamic notes = slide.NotesPage.Shapes.Placeholders(2);
             notes.TextFrame.TextRange.Text = "备注前缀旧文字后缀";
@@ -342,6 +385,12 @@ internal static class PowerPointTests
             Check((string)notes.TextFrame.TextRange.Text == "普通视图插入🙂备注测试", "Normal notes pane insertion");
             bridge.Request("CLEAR", lease);
             Console.WriteLine("PASS normal-view notes pane");
+            File.WriteAllText(Path.Combine(sandbox, "environment.json"), JsonSerializer.Serialize(new
+            {
+                powerPointVersion = (string)app.Version,
+                os = Environment.OSVersion.VersionString,
+                bridge = Path.GetFullPath(args[0])
+            }));
             Console.WriteLine("PASS PowerPoint " + (string)app.Version + " with real bridge " + args[0]);
             return 0;
         }

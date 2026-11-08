@@ -687,7 +687,29 @@ def build_native_windows(dotnet):
     subprocess.run(
         [
             dotnet,
+            "build",
+            str(ROOT / "src/native/windows/OpenASRInputBridge.csproj"),
+            "--no-incremental",
+            "-c",
+            "Release",
+            "-r",
+            "win-x64",
+            "--self-contained",
+            "true",
+            "-p:DebugType=None",
+            "-p:DebugSymbols=false",
+        ],
+        check=True,
+    )
+    # Source synchronization/VM clock changes must not package an old bridge
+    # with a new source receipt. Publish only the explicitly rebuilt assembly.
+    if (BUILD / "native").exists():
+        shutil.rmtree(BUILD / "native")
+    subprocess.run(
+        [
+            dotnet,
             "publish",
+            "--no-build",
             str(ROOT / "src/native/windows/OpenASRInputBridge.csproj"),
             "-c",
             "Release",

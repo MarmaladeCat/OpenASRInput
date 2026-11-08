@@ -21,10 +21,21 @@ if (-not (Test-Path "$env:DOTNET_ROOT/dotnet.exe")) {
 }
 Push-Location $root
 try {
-    & "$env:DOTNET_ROOT/dotnet.exe" publish src/native/windows/OpenASRInputBridge.csproj -c Release -r win-x64 --self-contained false -o "$tools/bridge"
-    if ($LASTEXITCODE -ne 0) { throw 'Bridge publish failed' }
-    & "$env:DOTNET_ROOT/dotnet.exe" publish tests/windows_editor/WindowsTestEditor.csproj -c Release -r win-x64 --self-contained false -o "$tools/editor"
-    if ($LASTEXITCODE -ne 0) { throw 'Test editor publish failed' }
+    # A VM clock can move backwards. Never accept a cached assembly just because
+    # its timestamp is newer than the freshly synchronized source snapshot.
+    foreach ($item in @(
+        @('src/native/windows/OpenASRInputBridge.csproj', 'bridge'),
+        @('tests/windows_editor/WindowsTestEditor.csproj', 'editor')
+    )) {
+        & "$env:DOTNET_ROOT/dotnet.exe" build $item[0] --no-incremental -c Release -r win-x64 --self-contained false
+        if ($LASTEXITCODE -ne 0) { throw "Current-source build failed: $($item[0])" }
+        $output = Join-Path $tools $item[1]
+        # Publish also uses PreserveNewest: a rebuilt assembly with an older
+        # VM timestamp must not leave yesterday's published DLL in this folder.
+        if (Test-Path $output) { Remove-Item $output -Recurse -Force }
+        & "$env:DOTNET_ROOT/dotnet.exe" publish $item[0] --no-build -c Release -r win-x64 --self-contained false -o $output
+        if ($LASTEXITCODE -ne 0) { throw "Publish failed: $($item[0])" }
+    }
 } finally {
     Pop-Location
 }

@@ -6,6 +6,7 @@ Inspect Git status first, then read README.md, docs/development.md, docs/testing
 Repository/layout changes must not regress functionality or performance. Keep this product independently runnable, testable, buildable, and releasable.
 Never import other products' source, share databases, or borrow their Python/Node runtimes. Use public protocols across products.
 For behavioral changes, select relevant unit, business, UI, native, and package checks. docs/testing.md governs release acceptance.
+Windows input changes must isolate optional UIA capabilities, recheck focus after provider calls, and confirm writes without replaying ambiguous results. Cover partial-provider failures and runtime read-only transitions with the disposable editor; process names and geometry never establish editability by themselves.
 Never count skips, failures, or inadequate environments as passes. Simulated upstreams cannot replace real model/device/platform acceptance.
 docs/ contains current, manually maintained bilingual documentation: English default filenames and linked *.zh-CN.md counterparts. scripts/build.py uses pinned build environments; candidates go to .cache/build/artifacts/, final output to `release/<VERSION>/` with flat packages/checksums. Never output product dist/.
 Test output goes to test-results/; tools, containers, and VM state go to .cache/. Commit neither.

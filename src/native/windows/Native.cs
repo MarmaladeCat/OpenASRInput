@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace OpenASRInput;
 
@@ -61,6 +62,8 @@ internal static class Native
     }
     [DllImport("user32.dll")] internal static extern nint GetForegroundWindow();
     [DllImport("user32.dll")] internal static extern nint GetAncestor(nint window, uint flags);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetClassNameW(nint window, StringBuilder name, int capacity);
     [DllImport("user32.dll")] internal static extern uint GetWindowThreadProcessId(nint hwnd, out uint pid);
     [DllImport("user32.dll")] internal static extern bool GetGUIThreadInfo(uint thread, ref GuiThreadInfo info);
     [DllImport("user32.dll")] internal static extern bool ClientToScreen(nint window, ref Point point);
@@ -75,6 +78,12 @@ internal static class Native
     [DllImport("user32.dll")] internal static extern uint GetDpiForWindow(nint window);
     [DllImport("user32.dll")] internal static extern nint MonitorFromPoint(Point point, uint flags);
     [DllImport("shcore.dll")] internal static extern int GetDpiForMonitor(nint monitor, int kind, out uint x, out uint y);
+
+    internal static string WindowClass(nint window)
+    {
+        var name = new StringBuilder(256);
+        return GetClassNameW(window, name, name.Capacity) == 0 ? "" : name.ToString();
+    }
 
     internal static bool ModifiersHeld() => new[] { 0x10, 0x11, 0x12, 0x5b, 0x5c }
         .Any(key => (GetAsyncKeyState(key) & 0x8000) != 0);

@@ -6,5 +6,8 @@
   <ItemGroup>
     <Compile Include="../../src/native/windows/Target.cs" Link="Target.cs" />
     <Compile Include="../../src/native/windows/CaretGeometry.cs" Link="CaretGeometry.cs" />
+    <Compile Include="../../src/native/windows/OfficeTextRange.cs" Link="OfficeTextRange.cs" />
+    <Compile Include="../../src/native/windows/InsertionEvidence.cs" Link="InsertionEvidence.cs" />
+    <Compile Include="../../src/native/windows/InsertionCheckpoint.cs" Link="InsertionCheckpoint.cs" />
   </ItemGroup>
 </Project>

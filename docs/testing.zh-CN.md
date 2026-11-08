@@ -23,6 +23,25 @@ python scripts/test.py run --suite ui
 实际应用运行仍使用自己的运行时。每次 run 在本产品 test-results/functional/ 下产生新的报告与日志。
 `--case <ID>` 可以定位单项，不能用单项通过代表整个产品通过。
 
+### Windows 编辑器兼容性
+
+`windows-native` 包含实际 TextBox/RichTextBox/WebView2 操作、已有文字光标时注入 Shift+Space 发起录音请求、在名为 `POWERPNT` 的可丢弃夹具中运行同样控件（`native-office-controls`），以及无桌面的目标/原生选区规则（`native-target-rules`）。同名夹具用于发现按整个进程误选输入路径的问题，不是 Microsoft Office。规则测试覆盖可选接口异常、位置缺失、Office 原生文字选区回退、明确只读拒绝、焦点切换、Unicode 范围替换与写入异常。
+
+包内原生验收使用本产品测试 Python、设置 `PYTHONPATH=src;tests`，运行 `tests/functional/check_windows_editor.py --bridge '<候选目录>/native/OpenASRInputBridge.exe'`，再加 `--office-host` 重复执行。环境报告记录实际桥接程序集哈希。
+
+专用编辑器还包含真实 WPF 文本框，可让可选 Value getter 在写入前或写入后失败，同时保留 TextPattern。核验指定位置的 Unicode 输入、幂等重放、全部确认通道不可用时的面板预览与零写入，以及 WinForms、WPF、Chromium 的只读/恢复切换。无桌面规则分别注入值/文本/选区/计数故障，并在提供者调用中触发焦点变化，运行实际的证据与续写代码。缺少能力不允许绕过明确保护，也不允许重发不确定的写入。
+
+真实 Office 专项必须在已安装 Microsoft PowerPoint 的隔离交互桌面中显式执行：
+
+```powershell
+python scripts/test.py setup --suite windows-office
+python scripts/test.py run --suite windows-office --execution-host virtual-machine
+# 使用本次候选包解出的桥接，而非源码构建的桥接：
+python tests/functional/check_windows_powerpoint.py --bridge '<候选目录>/native/OpenASRInputBridge.exe'
+```
+
+测试仅在 test-results/ 下新建可丢弃演示文稿，覆盖文本框、空标题占位符、表格单元格、普通视图/备注页、Unicode/段落、仅替换选区、预览修订/取消、长定稿及跨形状/单元格焦点隔离。未安装 PowerPoint 时非零退出并记录阻塞，不算跳过或通过。保留 `native-powerpoint-result.json`、执行器日志和沙盒截图，记录准确 Office 版本与桥接哈希。Office 永久版和 Microsoft 365 分开执行；已有闪烁光标时的实体 Shift+Space 与真实麦克风须在桥接协议测试之外另验。
+
 ## 必须覆盖的行为
 
 | 层次               | 必测内容                                                                                                      |
@@ -35,7 +54,7 @@ python scripts/test.py run --suite ui
 包级检查入口示例（须先构建匹配平台的候选包）：
 
 ```bash
-python tests/test_portable_deb.py .cache/build/artifacts/linux/amd64/auto/openasrinput_1.0.1_amd64.deb
+python tests/test_portable_deb.py .cache/build/artifacts/linux/amd64/auto/openasrinput_1.0.2_amd64.deb
 ```
 
 ## 结果规则

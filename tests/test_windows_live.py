@@ -70,7 +70,12 @@ class WindowsEditorFixture:
         self.fixture("select-all")
         lease = self.bridge.begin_context()
         self.assertIsNotNone(lease)
-        self.assertEqual(self.bridge.submit(lease, str(uuid4()), text), "accepted")
+        result = self.bridge.submit(lease, str(uuid4()), text)
+        self.assertEqual(
+            result,
+            "accepted",
+            {"context": self.bridge.context_status(), "error": self.bridge.last_commit_error},
+        )
         self.assertEqual(self.read("editor-text.json")["first"], text)
         return lease
 
@@ -149,6 +154,99 @@ class WindowsEditorFixture:
     LIVE_EDITOR, "requires an explicit disposable WindowsTestEditor sandbox and helper"
 )
 class WindowsEditorTests(WindowsEditorFixture, unittest.TestCase):
+    def test_optional_value_failures_preserve_text_confirmation(self):
+        for mode in ("value-read", "value-after-change"):
+            with self.subTest(mode=mode):
+                try:
+                    self.fixture("set", "provider", text="前缀后缀")
+                    self.fixture("fault", "provider", mode=mode)
+                    lease = self.editable_lease("provider")
+                    self.fixture("select", "provider", start=2, length=0)
+                    commit = str(uuid4())
+                    result = self.bridge.submit(lease, commit, "中文🙂")
+                    self.assertEqual(result, "accepted", self.bridge.context_status())
+                    self.wait_text("editor-text.json", "provider", "前缀中文🙂后缀")
+                    self.assertEqual(
+                        self.bridge.context_status()["lastInsertionMethod"], "native-char"
+                    )
+                    self.assertIn(
+                        self.bridge.context_status()["lastInsertionVerification"],
+                        ("text-change-confirmed", "caret-text-confirmed"),
+                    )
+                    self.assertEqual(self.bridge.submit(lease, commit, "中文🙂"), "accepted")
+                    self.wait_text("editor-text.json", "provider", "前缀中文🙂后缀")
+                finally:
+                    self.fixture("fault", "provider", mode="none")
+                    self.fixture("focus", "first")
+
+    def test_missing_confirmation_keeps_panel_preview_and_performs_no_write(self):
+        try:
+            self.fixture("set", "provider", text="原文必须保留")
+            self.fixture("fault", "provider", mode="no-evidence")
+            lease = self.editable_lease("provider")
+            self.assertEqual(
+                self.bridge.show_cursor(lease, 1, CursorFrame("listening", "面板预览", "")),
+                "accepted",
+            )
+            self.assertEqual(self.bridge.context_status()["screenMode"], "panel-only")
+            self.wait_text("editor-text.json", "provider", "原文必须保留")
+            commit = str(uuid4())
+            self.assertEqual(self.bridge.submit(lease, commit, "不得盲写"), "failed")
+            self.wait_text("editor-text.json", "provider", "原文必须保留")
+            self.assertEqual(self.bridge.submit(lease, commit, "不得盲写"), "failed")
+            self.wait_text("editor-text.json", "provider", "原文必须保留")
+        finally:
+            self.fixture("fault", "provider", mode="none")
+            self.fixture("focus", "first")
+
+    def test_target_becoming_readonly_revokes_lease_and_can_recover(self):
+        for control in ("first", "rich", "web-first", "web-second", "provider"):
+            with self.subTest(control=control):
+                filename = "browser-text.json" if control.startswith("web-") else "editor-text.json"
+                field = control[4:] if control.startswith("web-") else control
+                try:
+                    lease = self.editable_lease(control)
+                    self.fixture("select-all", control)
+                    self.assertEqual(
+                        self.bridge.submit(lease, str(uuid4()), "保留原文"), "accepted"
+                    )
+                    self.fixture("readonly", control, enabled=True)
+                    self.assertFalse(self.bridge.valid(lease))
+                    self.assertEqual(self.bridge.submit(lease, str(uuid4()), "迟到结果"), "stale")
+                    self.wait_text(filename, field, "保留原文")
+                    self.fixture("readonly", control, enabled=False)
+                    recovered = self.editable_lease(control)
+                    self.fixture("select-all", control)
+                    self.assertEqual(
+                        self.bridge.submit(recovered, str(uuid4()), "恢复输入"), "accepted"
+                    )
+                    self.wait_text(filename, field, "恢复输入")
+                finally:
+                    self.fixture("readonly", control, enabled=False)
+                    self.fixture("focus", "first")
+
+    def test_shift_space_can_request_start_with_a_text_caret(self):
+        for control in ("first", "rich", "web-first", "web-second"):
+            with self.subTest(control=control):
+                try:
+                    lease = self.editable_lease(control)
+                    self.bridge.clear_cursor(lease)
+                    self.bridge.poll_events()
+                    self.send_keys([(16, True), (32, True), (32, False), (16, False)])
+                    events = []
+                    deadline = time.monotonic() + 2
+                    while time.monotonic() < deadline and "toggle" not in events:
+                        events.extend(self.bridge.poll_events())
+                        time.sleep(0.02)
+                    self.assertEqual(events, ["toggle"], "Shift+Space must request a round once")
+                    # The controller handles the event by acquiring a fresh target.
+                    lease = self.bridge.begin_context()
+                    self.assertIsNotNone(lease, self.bridge.context_status())
+                    self.assertTrue(self.bridge.valid(lease))
+                    self.bridge.clear_cursor(lease)
+                finally:
+                    self.fixture("focus", "first")
+
     def test_three_layer_preview_revision_final_and_cancel(self):
         for control in ("first", "rich", "web-first", "web-second"):
             with self.subTest(control=control):

@@ -2,7 +2,7 @@
 
 [English](README.md) | **简体中文**
 
-**1.0.1** · 系统语音输入。采集麦克风，经 Portal 识别后预览并提交到当前输入目标；Linux 支持 IBus、Fcitx5 和 X11 下的 Fcitx4，Windows 使用独立原生桥接。
+**1.0.2** · 系统语音输入。采集麦克风，经 Portal 识别后预览并提交到当前输入目标；Linux 支持 IBus、Fcitx5 和 X11 下的 Fcitx4，Windows 使用独立原生桥接。
 
 ## 从这里开始
 
@@ -15,7 +15,7 @@ Input 需要 [OpenASRPortal](https://github.com/MarmaladeCat/OpenASRPortal) 提�
 - **理解实现**：[架构设计](docs/architecture.zh-CN.md)。
 - **修改与打包**：[开发和发布流程](docs/development.zh-CN.md)。
 - **执行验收**：[测试环境与约束](docs/testing.zh-CN.md)。
-- **查看版本**：[1.0.1 版本说明](docs/release.zh-CN.md)。
+- **查看版本**：[1.0.2 版本说明](docs/release.zh-CN.md)。
 
 本产品能独立克隆、开发、测试和发布；没有共享产品数据库。源码运行需要 Python 3.10+，原生桥接另需对应平台工具链；已打包的 Input 携带私有 Python 运行时。测试用 Electron 不属于产品运行依赖。
 

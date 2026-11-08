@@ -11,6 +11,9 @@
 - `portal-cards`: per-card testing, key isolation, switching, saving, reloading, deletion.
 - `microphone-calibration`: real page calibration, retest, independent validation, cancellation, saving; synthetic PCM/simulated ASR.
 - `native-editor` (Windows): actual helper/UI Automation with dedicated TextBox/RichTextBox/WebView2 editors; commits, revisions, cancellation, selection replacement, focus guards. Missing environments/skips are not passes.
+- `native-office-controls` (Windows): the same journeys in a POWERPNT-named editor fixture to catch process-wide routing mistakes; this does not run real Office.
+- `native-target-rules` (Windows): headless target/native-range/evidence contracts, including independently failing UIA capabilities, legacy Office fallback, reentrant focus changes, bounded confirmation, and ambiguous writes.
+- `powerpoint-editor` (`windows-office`, opt-in): real PowerPoint with a disposable presentation. See [Office acceptance](../../docs/testing.md#windows-editor-compatibility); missing Office fails explicitly.
 
 From this repository root, Python 3.10+:
 
@@ -26,6 +29,7 @@ python scripts/test.py run --suite windows-native --execution-host virtual-machi
 
 The runner prepares product test environments, UI tools, and `src`/`tests` search paths. UI uses Electron 44.4.5 and points `OPENASRINPUT_TEST_PYTHON` to this product's venv. Direct manifest debugging requires the same environment. On physical Windows set execution-host to physical.
 Native setup invokes `prepare_windows.ps1`; run invokes `check_windows_editor.py`. The pinned .NET SDK is SHA-512-verified and stored in `.cache/functional/windows/`.
+The editor includes a real WPF provider-fault fixture. Its Value getter can fail before/after text delivery while TextPattern remains usable; a no-evidence mode must retain panel-only preview and reject commits without modifying text. Native, WPF, and Chromium controls also switch read-only on/off during a bound round to verify revocation and recovery.
 The runner waits for WebView2 and verifies window process identity. If Windows denies background activation, it clicks only coordinates confirmed by hit-testing to belong to the dedicated editor, then rechecks the foreground process. Before exit it saves `test-results/native-editor-desktop.png`.
 Per-Monitor V2 DPI awareness keeps window/click hit-test coordinates consistent at high DPI. `native-editor-environment.json` records .NET/WebView2, DPI, and display regions; `native-editor-result.json` records counts, failures, and skips. VM workers return this evidence too.
 

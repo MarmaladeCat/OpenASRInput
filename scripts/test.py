@@ -140,7 +140,7 @@ def setup(directory, manifest, suite, env):
             drawio(directory, manifest["drawio"])
         for command in manifest.get("prepareUI", []) if suite == "ui" else []:
             execute(command, directory, env)
-    if suite == "windows-native":
+    if suite in ("windows-native", "windows-office"):
         for command in manifest.get("prepareWindows", []):
             execute(command, directory, env, timeout=1800)
     print(f"Ready: {manifest['product']} ({TARGET})", flush=True)
@@ -267,7 +267,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=["list", "setup", "run"])
     parser.add_argument("--product", choices=["all", *PRODUCTS], default="all")
-    parser.add_argument("--suite", choices=["unit", "core", "ui", "windows-native"], default="core")
+    parser.add_argument(
+        "--suite",
+        choices=["unit", "core", "ui", "windows-native", "windows-office"],
+        default="core",
+    )
     parser.add_argument("--case", help="Run one stable case ID")
     parser.add_argument(
         "--execution-host",
@@ -281,8 +285,8 @@ def main():
         help="Allow an incomplete unit run; skipped cases remain incomplete in the report",
     )
     args = parser.parse_args()
-    if args.suite == "windows-native" and os.name != "nt" and args.action != "list":
-        parser.error("windows-native requires an interactive Windows desktop")
+    if args.suite.startswith("windows-") and os.name != "nt" and args.action != "list":
+        parser.error(f"{args.suite} requires an interactive Windows desktop")
     manifests = read_manifests(PRODUCTS if args.product == "all" else [args.product])
     selected = [
         (directory, manifest, case)

@@ -1,9 +1,6 @@
 using System.Diagnostics;
-using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Windows.Automation;
-using System.Windows.Automation.Text;
 
 namespace OpenASRInput;
 
@@ -13,13 +10,10 @@ internal static class TextInsertion
     internal static string LastVerification = "";
     private const uint GetSelection = 0x00b0, ReplaceSelection = 0x00c2;
     private const uint MessageFlags = 0x23, Timeout = 300;
-    private const int VerificationTextLimit = 65536;
     [DllImport("user32.dll", EntryPoint = "SendMessageTimeoutW", SetLastError = true)]
     private static extern nint Character(nint window, uint message, nuint character, nint data,
         uint flags, uint timeout, out nuint result);
 
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern int GetClassNameW(nint window, StringBuilder name, int capacity);
     [DllImport("user32.dll")]
     private static extern bool IsWindowUnicode(nint window);
     [DllImport("user32.dll", EntryPoint = "SendMessageTimeoutW", SetLastError = true)]
@@ -37,9 +31,7 @@ internal static class TextInsertion
 
     internal static bool NativeEdit(Target target)
     {
-        var name = new StringBuilder(256);
-        GetClassNameW(target.Focus, name, name.Capacity);
-        string type = name.ToString();
+        string type = Native.WindowClass(target.Focus);
         return IsWindowUnicode(target.Focus) && (type.Equals("Edit", StringComparison.OrdinalIgnoreCase) ||
             type.StartsWith("WindowsForms10.EDIT.", StringComparison.OrdinalIgnoreCase) ||
             type.StartsWith("RichEdit", StringComparison.OrdinalIgnoreCase) ||
@@ -58,18 +50,16 @@ internal static class TextInsertion
         }
         if (OfficeInsertion.Supports(target))
         {
+            LastMethod = "office-selection";
             string office = OfficeInsertion.Replace(target, text, current);
             if (office != "unsupported")
             {
-                LastMethod = "office-selection";
                 LastVerification = office == "accepted" ? "office-range-confirmed" : "not-confirmed";
                 return office;
             }
             return "failed";
         }
-        var name = new StringBuilder(256);
-        GetClassNameW(target.Focus, name, name.Capacity);
-        string type = name.ToString();
+        string type = Native.WindowClass(target.Focus);
         bool rich = type.StartsWith("RichEdit", StringComparison.OrdinalIgnoreCase) ||
             type.StartsWith("WindowsForms10.RichEdit", StringComparison.OrdinalIgnoreCase);
         bool edit = type.Equals("Edit", StringComparison.OrdinalIgnoreCase) ||
@@ -102,7 +92,7 @@ internal static class TextInsertion
         return accepted ? "accepted" : "unknown";
     }
 
-    internal static string Normalize(string text) => text.Replace("\r\n", "\n").Replace('\r', '\n');
+    internal static string Normalize(string text) => InsertionEvidence.Normalize(text);
 
     internal static string DeleteSelected(Target target, Func<bool> current)
     {
@@ -120,33 +110,6 @@ internal static class TextInsertion
         return down && up && current() ? "accepted" : "unknown";
     }
 
-    private static int Count(TextPattern pattern)
-    {
-        var document = pattern.DocumentRange;
-        var range = document.Clone();
-        int count = range.MoveEndpointByUnit(TextPatternRangeEndpoint.Start, TextUnit.Character, int.MaxValue);
-        return range.CompareEndpoints(TextPatternRangeEndpoint.Start, document, TextPatternRangeEndpoint.End) == 0 ? count : -1;
-    }
-
-    private static bool ChangedBy(string before, string after, string text)
-    {
-        before = Normalize(before);
-        after = Normalize(after);
-        if (before == after || after.Length - before.Length > text.Length)
-            return false;
-        int prefix = 0, suffix = 0;
-        while (prefix < Math.Min(before.Length, after.Length) && before[prefix] == after[prefix])
-            prefix++;
-        while (suffix < Math.Min(before.Length, after.Length) && before[^(suffix + 1)] == after[^(suffix + 1)])
-            suffix++;
-        int start = Math.Max(0, after.Length - text.Length - suffix);
-        int end = Math.Min(prefix, after.Length - text.Length);
-        if (start > end)
-            return false;
-        int match = after.IndexOf(text, start, StringComparison.Ordinal);
-        return match >= start && match <= end;
-    }
-
     private static string CommitCharacters(Target target, string text, Func<bool> current)
     {
         LastMethod = "native-char";
@@ -155,44 +118,14 @@ internal static class TextInsertion
             return "stale";
         if (!IsWindowUnicode(target.Focus))
             return "failed";
-        TextPattern? pattern = null;
-        ValuePattern? valuePattern = null;
-        string? beforeValue = null;
-        string? beforeText = null;
-        int beforeCount = -1;
-        bool beforeCollapsed = true;
-        try
+        var evidence = InsertionEvidence.Read(target);
+        if (!current())
+            return "stale";
+        if (!evidence.Available)
         {
-            var element = AutomationElement.FocusedElement;
-            if (element != null && string.Join(".", element.GetRuntimeId()) == target.Identity &&
-                element.TryGetCurrentPattern(ValuePattern.Pattern, out var editableValue))
-            {
-                valuePattern = (ValuePattern)editableValue;
-                // This local snapshot belongs only to the validated editable
-                // field. It is never logged, persisted or sent to the Portal,
-                // and never used to replace the whole field.
-                beforeValue = valuePattern.Current.Value;
-            }
-            if (element != null && string.Join(".", element.GetRuntimeId()) == target.Identity &&
-                element.TryGetCurrentPattern(TextPattern.Pattern, out var value))
-            {
-                pattern = (TextPattern)value;
-                var selection = pattern.GetSelection();
-                if (selection.Length == 1)
-                {
-                    beforeCollapsed = selection[0].CompareEndpoints(TextPatternRangeEndpoint.Start,
-                        selection[0], TextPatternRangeEndpoint.End) == 0;
-                    beforeCount = Count(pattern);
-                    // Replacement need not increase provider character counts.
-                    // Keep bounded local evidence even when counting is supported;
-                    // Chromium contenteditable can publish caret/count separately.
-                    string snapshot = pattern.DocumentRange.GetText(VerificationTextLimit + 1);
-                    if (snapshot.Length <= VerificationTextLimit)
-                        beforeText = snapshot;
-                }
-            }
+            LastVerification = evidence.LastStatus;
+            return "failed"; // No write without a usable confirmation baseline.
         }
-        catch (Exception error) { LastVerification = "provider-" + error.GetType().Name; }
 
         string normalized = Normalize(text);
         var budget = Stopwatch.StartNew();
@@ -221,13 +154,6 @@ internal static class TextInsertion
         // WM_CHAR delivers text to the validated native focus, without relying
         // on VK_PACKET translation by IMEs/hooks. A delivered message alone is
         // not proof of insertion: confirm the caret suffix and metadata change.
-        if ((pattern == null || beforeCount < 0) && valuePattern == null && beforeText == null)
-        {
-            LastVerification = "provider-unavailable";
-            return "unknown";
-        }
-        int[] units = { StringInfo.ParseCombiningCharacters(normalized).Length,
-            normalized.EnumerateRunes().Count(), normalized.Length };
         while (budget.ElapsedMilliseconds < 2400)
         {
             if (!current())
@@ -235,39 +161,17 @@ internal static class TextInsertion
                 LastVerification = "focus-lost-during-confirmation";
                 return "unknown";
             }
-            try
+            string? verification = evidence.Confirm(normalized);
+            if (!current())
             {
-                if (valuePattern != null && beforeValue != null && ChangedBy(beforeValue, valuePattern.Current.Value, normalized))
-                {
-                    LastVerification = "value-change-confirmed";
-                    return "accepted";
-                }
-                if (pattern != null && beforeText != null)
-                {
-                    string afterText = pattern.DocumentRange.GetText(VerificationTextLimit + 1);
-                    if (afterText.Length <= VerificationTextLimit && ChangedBy(beforeText, afterText, normalized))
-                    {
-                        LastVerification = "text-change-confirmed";
-                        return "accepted";
-                    }
-                }
-                var selection = pattern?.GetSelection() ?? Array.Empty<TextPatternRange>();
-                if (selection.Length == 1 && selection[0].CompareEndpoints(TextPatternRangeEndpoint.Start,
-                    selection[0], TextPatternRangeEndpoint.End) == 0 && (!beforeCollapsed || Count(pattern!) > beforeCount))
-                {
-                    foreach (int count in units.Distinct())
-                    {
-                        var inserted = selection[0].Clone();
-                        inserted.MoveEndpointByUnit(TextPatternRangeEndpoint.Start, TextUnit.Character, -count);
-                        if (Normalize(inserted.GetText(normalized.Length * 2 + 2)) == normalized)
-                        {
-                            LastVerification = "caret-text-confirmed";
-                            return "accepted";
-                        }
-                    }
-                }
+                LastVerification = "focus-lost-during-confirmation";
+                return "unknown";
             }
-            catch (Exception error) { LastVerification = "confirmation-" + error.GetType().Name; return "unknown"; }
+            if (verification != null)
+            {
+                LastVerification = verification;
+                return "accepted";
+            }
             Thread.Sleep(10); // Chromium renderer confirmation is asynchronous.
         }
         LastVerification = "confirmation-timeout";

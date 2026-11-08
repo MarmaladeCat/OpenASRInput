@@ -10,6 +10,9 @@ internal sealed class TestEditor : Form
     private readonly Dictionary<string, TextBoxBase> fields = new();
     private readonly List<object> keyEvents = new();
     private readonly WebView2 browser = new() { Left = 750, Top = 35, Width = 600, Height = 480 };
+    private readonly ProviderEditor provider = new();
+    private readonly System.Windows.Forms.Integration.ElementHost providerHost = new()
+        { Left = 20, Top = 595, Width = 700, Height = 55 };
     private bool browserReady, commandRunning;
     private readonly System.Windows.Forms.Timer timer = new() { Interval = 30 };
     private readonly string directory;
@@ -22,7 +25,7 @@ internal sealed class TestEditor : Form
         File.WriteAllText(Path.Combine(directory, "editor-keys.json"), "[]");
         Text = "OpenASRInput Windows Test Editor";
         Width = 1390;
-        Height = 640;
+        Height = 720;
         Add("first", "测试输入框 A", 35, 140, multiline: true);
         Add("second", "测试输入框 B", 210, 120, multiline: true);
         Add("password", "密码测试框", 375, 25, password: true);
@@ -31,6 +34,10 @@ internal sealed class TestEditor : Form
         fields.Add("rich", rich);
         Controls.Add(rich);
         Controls.Add(browser);
+        providerHost.Child = provider;
+        Controls.Add(providerHost);
+        System.Windows.Automation.AutomationProperties.SetName(provider, "Disposable optional-provider editor");
+        provider.TextChanged += (_, _) => Save();
         fields["readonly"].Text = "只读测试，不应输入";
         File.WriteAllText(Path.Combine(directory, "editor-identity.json"),
             JsonSerializer.Serialize(new
@@ -93,7 +100,7 @@ internal sealed class TestEditor : Form
                     function save(){chrome.webview.postMessage({first:document.querySelector('#first').value,second:document.querySelector('#second').innerText,passwordLength:document.querySelector('#password').value.length,readOnly:document.querySelector('#readonly').value,ignored:document.querySelector('#ignored').value})}
                     document.addEventListener('input',save);addEventListener('load',save);
                     document.querySelector('#ignored').addEventListener('beforeinput',e=>e.preventDefault());
-                    window.fixture=function(action,name,start,length){const e=document.getElementById(name);e.focus();if(action==='select-all'){if(e.select)e.select();else{const r=document.createRange();r.selectNodeContents(e);getSelection().removeAllRanges();getSelection().addRange(r)}}else if(action==='select'){e.setSelectionRange(start,start+length)}else if(action==='undo'){document.execCommand('undo')}save()};
+                    window.fixture=function(action,name,start,length,enabled){const e=document.getElementById(name);e.focus();if(action==='select-all'){if(e.select)e.select();else{const r=document.createRange();r.selectNodeContents(e);getSelection().removeAllRanges();getSelection().addRange(r)}}else if(action==='select'){e.setSelectionRange(start,start+length)}else if(action==='undo'){document.execCommand('undo')}else if(action==='readonly'){if(name==='second')e.contentEditable=String(!enabled);else e.readOnly=enabled}save()};
                     </script>
                     """);
             }
@@ -132,7 +139,8 @@ internal sealed class TestEditor : Form
             second = fields["second"].Text,
             passwordLength = fields["password"].Text.Length,
             readOnly = fields["readonly"].Text,
-            rich = fields["rich"].Text
+            rich = fields["rich"].Text,
+            provider = provider.Text
         }));
 
     private void SaveKey(string control, KeyEventArgs key, bool down)
@@ -167,7 +175,36 @@ internal sealed class TestEditor : Form
                 throw new InvalidOperationException("test editor is not foreground");
             string control = value.GetProperty("control").GetString()!;
             string action = value.GetProperty("action").GetString()!;
-            if (control.StartsWith("web-", StringComparison.Ordinal))
+            if (control == "provider")
+            {
+                switch (action)
+                {
+                    case "focus":
+                        providerHost.Focus();
+                        provider.Focus();
+                        System.Windows.Input.Keyboard.Focus(provider);
+                        break;
+                    case "set":
+                        provider.Text = value.GetProperty("text").GetString()!;
+                        provider.Select(provider.Text.Length, 0);
+                        break;
+                    case "select":
+                        provider.Select(value.GetProperty("start").GetInt32(), value.GetProperty("length").GetInt32());
+                        break;
+                    case "select-all":
+                        provider.SelectAll();
+                        break;
+                    case "fault":
+                        provider.SetFault(value.GetProperty("mode").GetString()!);
+                        break;
+                    case "readonly":
+                        provider.IsReadOnly = value.GetProperty("enabled").GetBoolean();
+                        break;
+                    default:
+                        throw new InvalidOperationException("unsupported provider fixture command");
+                }
+            }
+            else if (control.StartsWith("web-", StringComparison.Ordinal))
             {
                 if (!browserReady)
                     throw new InvalidOperationException("Chromium fixture is not ready");
@@ -175,7 +212,8 @@ internal sealed class TestEditor : Form
                     browser.Focus();
                 string args = string.Join(",", JsonSerializer.Serialize(action), JsonSerializer.Serialize(control[4..]),
                     value.TryGetProperty("start", out var start) ? start.GetInt32() : 0,
-                    value.TryGetProperty("length", out var length) ? length.GetInt32() : 0);
+                    value.TryGetProperty("length", out var length) ? length.GetInt32() : 0,
+                    JsonSerializer.Serialize(value.TryGetProperty("enabled", out var enabled) && enabled.GetBoolean()));
                 await browser.ExecuteScriptAsync("window.fixture(" + args + ")");
             }
             else
@@ -194,6 +232,9 @@ internal sealed class TestEditor : Form
                         break;
                     case "undo":
                         field.Undo();
+                        break;
+                    case "readonly":
+                        field.ReadOnly = value.GetProperty("enabled").GetBoolean();
                         break;
                     default:
                         throw new InvalidOperationException("unsupported fixture command");

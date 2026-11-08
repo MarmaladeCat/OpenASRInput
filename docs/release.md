@@ -1,8 +1,8 @@
-# OpenASRInput 1.0.1 release notes
+# OpenASRInput 1.0.2 release notes
 
 **English** | [简体中文](release.zh-CN.md)
 
-Product and package versions are 1.0.1; public recognition protocol remains v1. Documentation is English-first with linked Chinese counterparts.
+Product and package versions are 1.0.2; public recognition protocol remains v1. Documentation is English-first with linked Chinese counterparts.
 
 ## Capabilities
 
@@ -21,7 +21,11 @@ Each installer has an exact `filename.sha256` companion containing one checksum 
 
 ## Current-source changes awaiting review
 
-Windows x64 and Linux amd64/ARM64 combined installers, fixed per-user configuration beneath the OpenASR root, legacy migration, setup-on-demand after installation, and upper-right Chinese/English page switching are described in [installation.md](installation.md). The 1.0.1 candidates are available for maintainer review and manual testing before publication.
+Windows x64 and Linux amd64/ARM64 combined installers, fixed per-user configuration beneath the OpenASR root, legacy migration, setup-on-demand after installation, and upper-right Chinese/English page switching are described in [installation.md](installation.md). The 1.0.2 candidates are available for maintainer review and manual testing before publication.
+
+Windows target detection tolerates missing optional UIA value/position capabilities and supports native PowerPoint text-selection fallback. Office writes bind to the focused document pane; ordinary controls in that process keep their own insertion backend. Missing UIA text ranges use panel-only preview with confirmed native range insertion. Real Office compatibility remains subject to the version-specific [acceptance procedure](testing.md).
+
+Windows custom-editor insertion checks optional value, text, and caret capabilities independently, including provider failures after a write. Focus is rechecked after provider queries. If no reliable confirmation baseline is available, the character backend reports failure before sending text; ambiguous writes are not repeated.
 
 ## Compatibility and upgrades
 

@@ -2,7 +2,7 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-**1.0.1** · System-wide voice input. Capture microphone audio, recognize through Portal, preview, and commit to the active input target. Linux supports IBus, Fcitx5, and Fcitx4 on X11; Windows uses an independent native bridge.
+**1.0.2** · System-wide voice input. Capture microphone audio, recognize through Portal, preview, and commit to the active input target. Linux supports IBus, Fcitx5, and Fcitx4 on X11; Windows uses an independent native bridge.
 
 ## Start here
 
@@ -15,7 +15,7 @@ For one installation of both products, see [combined installation, persistent co
 - **Understand:** [architecture](docs/architecture.md).
 - **Modify and package:** [development and releases](docs/development.md).
 - **Verify:** [test environments and requirements](docs/testing.md).
-- **Release:** [1.0.1 release notes](docs/release.md).
+- **Release:** [1.0.2 release notes](docs/release.md).
 
 This product can be cloned, developed, tested, and released independently, without a shared product database. Source requires Python 3.10+; native bridges need platform toolchains. Packaged Input includes a private Python runtime. Test Electron is not a product runtime dependency.
 

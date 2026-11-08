@@ -56,6 +56,7 @@ internal sealed class ScreenBuffer
 
     internal string Update(Target target, string requested, Func<bool> current, bool restore = false)
     {
+        bool selecting = false;
         try
         {
             TextInsertion.Validate(requested);
@@ -137,6 +138,7 @@ internal sealed class ScreenBuffer
                 Failed = true;
                 return "stale";
             }
+            selecting = true;
             replace.Select();
             // Chromium applies UIA selection asynchronously. Confirm the exact
             // range before sending characters; never race selection with input.
@@ -208,7 +210,17 @@ internal sealed class ScreenBuffer
             checkpoint = after;
             return Text == Desired ? "accepted" : "deferred";
         }
-        catch (Exception error) { LastFailure = error.GetType().Name; Failed = true; return "unknown"; }
+        catch (Exception error)
+        {
+            LastFailure = error.GetType().Name;
+            // Native Office dictation can work without UIA TextPattern. Before
+            // touching any selection/text, a missing optional preview provider
+            // means panel-only preview, not a failed recording round.
+            if (!selecting && !Active)
+                return "unsupported";
+            Failed = true;
+            return "unknown";
+        }
     }
 
     internal string Finish(Target target, string id, string text, Func<bool> current)

@@ -22,7 +22,10 @@ Old results cannot enter a new editor after focus/target changes. Text with unce
 
 - Linux frameworks maintain preedit and commits; Fcitx4 is X11-only. Wayland focus, cursor rectangles, and panels depend on desktop protocols, not X11 global-injection assumptions.
 - Windows native processes and controllers use restricted IPC. Target-control capabilities determine preview/commit strategy; applications need not behave identically.
+- Windows editability is independent of optional UIA value/geometry support. PowerPoint can confirm an active text selection through the native object model of the focused `paneClassDC` (or its focused child); an explicit read-only/password/disabled result still rejects input. Ordinary controls in the PowerPoint process retain their normal backend. Missing UIA text ranges use panel-only preview and verified native selection insertion; ambiguous writes are never replayed. Native window and UIA control identity are rechecked after provider calls, including switches within one window.
 - A local service serves settings. Configuration changes do not require restarting the user's desktop. Demo mode uses an in-memory target only.
+
+`InsertionEvidence` isolates value reads, bounded document-text snapshots, and count/caret evidence before and after Windows character insertion. A failing optional provider cannot suppress a working alternative. Without any usable baseline, the character backend fails before writing; after a write, it may repeat read-only confirmation but never resend characters. Continuation checkpoints and per-character authorization recheck focus after UIA calls, which may dispatch focus changes reentrantly.
 
 ## Configuration and product boundaries
 

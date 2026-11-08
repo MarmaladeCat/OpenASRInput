@@ -2,7 +2,7 @@
 
 **English** | [简体中文](installation.zh-CN.md)
 
-This page describes 1.0.1 candidates for maintainer review and manual testing. Existing published 1.0.0 packages predate these installation and language changes. Publication follows approval of the candidates.
+This page describes 1.0.2 candidates for maintainer review and manual testing. Existing published 1.0.0 packages predate these installation and language changes. Publication follows approval of the candidates.
 
 ## Choose your installation
 

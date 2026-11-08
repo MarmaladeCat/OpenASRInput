@@ -84,7 +84,8 @@ internal sealed class Overlay : Forms.Form
             return;
         }
         Opacity = 1 - Transparency / 100.0;
-        var anchor = target?.Caret ?? new Rectangle(Forms.Cursor.Position, new Size(1, 24));
+        var anchor = target != null && !target.Caret.IsEmpty ? target.Caret :
+            new Rectangle(Forms.Cursor.Position, new Size(1, 24));
         CaretAnchor = anchor;
         CaretKnown = target?.CaretKnown == true;
         var screen = Forms.Screen.FromPoint(new Point(anchor.Left, anchor.Top));

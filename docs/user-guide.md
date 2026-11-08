@@ -2,7 +2,7 @@
 
 **English** | [简体中文](user-guide.zh-CN.md)
 
-Version **1.0.1**. This guide covers first installation, daily dictation, selection editing, multiple services, and recovery. See [API](API.md) for integration and [development](development.md) for source builds. Licensed under [GPL v3](../LICENSE). English descriptions below retain key Chinese button labels where useful for locating controls in the current UI.
+Version **1.0.2**. This guide covers first installation, daily dictation, selection editing, multiple services, and recovery. See [API](API.md) for integration and [development](development.md) for source builds. Licensed under [GPL v3](../LICENSE). English descriptions below retain key Chinese button labels where useful for locating controls in the current UI.
 
 ## 1. Logical architecture
 
@@ -39,14 +39,14 @@ Windows uses x64 MSI; Debian/Ubuntu Linux uses amd64 or ARM64 deb. `amd64` means
 Download the matching file and its exact `filename.sha256` companion. Each checksum file contains one installer record. Linux can run `sha256sum -c filename.sha256` in the download directory. On Windows:
 
 ```powershell
-Get-FileHash .\OpenASRInput_1.0.1_windows_amd64_native.msi -Algorithm SHA256
+Get-FileHash .\OpenASRInput_1.0.2_windows_amd64_native.msi -Algorithm SHA256
 ```
 
 Compare the same-name manifest entry. Preserve directories when extracting documentation; images live in `docs/images/`.
 
 ### 2.2 Windows installation and first run
 
-1. Run `OpenASRInput_1.0.1_windows_amd64_native.msi` and complete the wizard.
+1. Run `OpenASRInput_1.0.2_windows_amd64_native.msi` and complete the wizard.
 2. Open OpenASRInput settings from Start. Standalone Input MSI does not include Portal; use your administrator's address for an existing remote Portal.
 3. In Windows Settings → Privacy & security → Microphone, permit desktop apps and confirm the device is not muted in Sound settings.
 4. Check the Portal card, microphone, and native bridge as described below.
@@ -61,7 +61,7 @@ Real settings service extracted from the 1.0.0 MSI on Windows 11 amd64, using te
 In the download directory (substitute the ARM64 file when appropriate):
 
 ```bash
-sudo apt install ./OpenASRInput_1.0.1_linux_amd64_local-auto.deb
+sudo apt install ./OpenASRInput_1.0.2_linux_amd64_local-auto.deb
 openasrinput settings
 ```
 
@@ -212,6 +212,8 @@ The test checks gateway authentication/profile queries only. Check waveform, ena
 ### Text appears in the panel but not the target
 
 Check the selected Linux framework or running Windows bridge, editable target, and unchanged focus. If ordinary editors work but one app fails, investigate its input/selection capabilities or privilege differences. Settings captures/demo do not prove native delivery.
+
+In PowerPoint, enter text-editing mode so a caret or text selection is visible inside the shape or notes pane, then press Shift+Space. A shape border alone is not a text target. When Office does not expose UIA text ranges, provisional recognition stays in the panel and stable text uses the native selection; inline revision and selected-text commands require the relevant provider capabilities. If starting still fails, report the exact Office version and whether the target is a slide text box, placeholder, table cell, or notes pane. Each Office version needs its own [native acceptance](testing.md).
 
 ### Audio is quiet/noisy, or calibration does not improve it
 

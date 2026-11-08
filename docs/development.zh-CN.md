@@ -43,6 +43,8 @@ python scripts/build.py --platform windows --arch amd64 --wix-bin <WiX目录>
 
 Linux 使用 Ubuntu 22.04 基线容器和 PyInstaller 6.16.0；Windows 使用 Python 3.12.10、.NET SDK 8.0.408、WiX 3.14.1，以及 LLVM-MinGW 20261104 UCRT x86_64 或已安装的 Visual Studio C++/Windows SDK。`LLVM_MINGW_ROOT` 指向已校验解压目录；该 LLVM-MinGW ZIP 的 SHA256 为 `552191b5754c49a5a20723276a6fc56541ea1922c4c50b7b669022333fc1b40f`。
 
+Windows 原生打包及测试准备会先明确重编译桥接，再发布生成文件，避免源码同步或虚拟机时钟回拨时按时间戳复用旧程序集。普通编辑器、无桌面规则及显式真实 Office 验收按[测试说明](testing.zh-CN.md)分别记录。
+
 `build.py` 是公开入口；`build_portable_deb.py` 组装 Linux 固定环境，`build_deb.py/build_runtime.py` 组装包与私有 Python，`build_windows.py` 构建 Windows 桥接及 MSI，`windows_replacement.py` 处理替换和卸载。`build-native.sh` 用于单独原生开发，`package_gnome.py` 管理扩展包。
 
 `container_matrix.py`、`desktop_matrix.py/desktop_targets.py` 分别运行系统和桌面矩阵；`check_gnome_panel.py/check_settings.py/check_electron.py` 是隔离图形检查组件，`check_git_payload.py` 检查独立源码载荷。
@@ -51,7 +53,7 @@ Linux 使用 Ubuntu 22.04 基线容器和 PyInstaller 6.16.0；Windows 使用 Py
 
 单独预览文档时，先创建 `test-results/`，再运行 `python scripts/release.py --docs test-results/product-docs.zip`。全部人工 Markdown、图片和链接附件保留原始字节与相对目录。平铺发行目录在相同内容的 README 副本旁保留 `release.md` / `release.zh-CN.md`，确保语言链接有效。
 
-产品版本与工具元数据由 VERSION 指定为 **1.0.1**。候选包位于 `.cache/build/artifacts/<系统>/<架构>/<变体>/`，成功后由 `scripts/release.py` 发布到 `release/1.0.1/`，不生成产品 dist/。版本目录平铺软件包、完整 docs ZIP、中英文 README、清单与 SHA256SUMS。
+产品版本与工具元数据由 VERSION 指定为 **1.0.2**。候选包位于 `.cache/build/artifacts/<系统>/<架构>/<变体>/`，成功后由 `scripts/release.py` 发布到 `release/1.0.2/`，不生成产品 dist/。版本目录平铺软件包、完整 docs ZIP、中英文 README、清单与 SHA256SUMS。
 
 发布器校验版本、架构、唯一候选和哈希，同源的其他平台包可合并。源码或文档变化后不能拿旧收据证明新候选；应重新构建相应目标。平台验收和构建分开记录。
 

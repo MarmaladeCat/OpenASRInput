@@ -8,6 +8,13 @@ namespace OpenASRInput;
 internal sealed record Target(nint Window, nint Focus, uint Process, string Identity, Rectangle Caret,
     Rectangle Editor = default, bool CaretKnown = false)
 {
+    internal static string LastFailure = "";
+    private static Target? Reject(string reason)
+    {
+        LastFailure = reason;
+        return null;
+    }
+
     internal bool FocusAncestor(string identity)
     {
         try
@@ -40,7 +47,8 @@ internal sealed record Target(nint Window, nint Focus, uint Process, string Iden
             var element = AutomationElement.FocusedElement;
             Native.GetWindowThreadProcessId(Focus, out uint focusProcess);
             return element != null && element.Current.ProcessId == focusProcess &&
-                string.Join(".", element.GetRuntimeId()) == Identity;
+                element.Current.IsEnabled && !element.Current.IsPassword && element.Current.HasKeyboardFocus &&
+                string.Join(".", element.GetRuntimeId()) == Identity && NativeFocusCurrent();
         }
         catch { return false; }
     }
@@ -122,48 +130,72 @@ internal sealed record Target(nint Window, nint Focus, uint Process, string Iden
         return Rectangle.Empty;
     }
 
+    private static bool? Editable(AutomationElement element)
+    {
+        try
+        {
+            if (element.TryGetCurrentPattern(ValuePattern.Pattern, out var value))
+                return !((ValuePattern)value).Current.IsReadOnly;
+        }
+        catch { /* An optional ValuePattern failure must not hide TextPattern. */ }
+        try
+        {
+            // Office exposes edited slide shapes as Image, not Edit/Document.
+            // Require an actual selection/caret, not just a writable text frame.
+            if (element.TryGetCurrentPattern(TextPattern.Pattern, out var value))
+            {
+                var text = (TextPattern)value;
+                var readOnly = text.DocumentRange.GetAttributeValue(TextPattern.IsReadOnlyAttribute);
+                if (readOnly is true)
+                    return false;
+                if (readOnly is false && text.GetSelection().Length == 1)
+                    return true;
+            }
+        }
+        catch { }
+        return null;
+    }
+
     internal static Target? Read(bool includeGeometry = true)
     {
+        LastFailure = "";
         try
         {
             nint window = Native.GetForegroundWindow();
             uint thread = Native.GetWindowThreadProcessId(window, out uint pid);
             if (window == 0 || pid == Environment.ProcessId)
-                return null;
+                return Reject("foreground-unavailable");
             var info = new Native.GuiThreadInfo { Size = (uint)Marshal.SizeOf<Native.GuiThreadInfo>() };
             if (!Native.GetGUIThreadInfo(thread, ref info) || info.Focus == 0 ||
                 Native.GetAncestor(info.Focus, 2) != window)
-                return null;
+                return Reject("native-focus-unavailable");
             Native.GetWindowThreadProcessId(info.Focus, out uint focusPid);
             var element = AutomationElement.FocusedElement;
             if (element == null || element.Current.IsPassword || !element.Current.IsEnabled ||
                 !element.Current.HasKeyboardFocus || element.Current.ProcessId != focusPid)
-                return null;
-            bool editable = false;
-            if (element.TryGetCurrentPattern(ValuePattern.Pattern, out var value))
-                editable = !((ValuePattern)value).Current.IsReadOnly;
-            // Office reports an actively edited slide text box as Image, not
-            // Document/Edit. Use its actual text capabilities, but require a
-            // caret/selection: a merely selected shape also advertises writable
-            // TextPattern and must not authorize dictation into the canvas.
-            if (!editable && element.TryGetCurrentPattern(TextPattern.Pattern, out var pattern))
-            {
-                var text = (TextPattern)pattern;
-                editable = text.DocumentRange.GetAttributeValue(TextPattern.IsReadOnlyAttribute) is false &&
-                    text.GetSelection().Length == 1;
-            }
-            if (!editable)
-                return null;
+                return Reject("uia-focus-unavailable-or-protected");
             string identity = string.Join(".", element.GetRuntimeId());
             if (identity.Length == 0)
-                return null;
+                return Reject("uia-identity-unavailable");
+            bool? editable = Editable(element);
+            if (editable == false)
+                return Reject("read-only");
+            // Older Office providers can omit TextPattern/IsReadOnly/selection
+            // even while an actual text caret exists. The native object model
+            // may authorize only a text selection in this exact focused pane.
+            if (editable == null && !OfficeInsertion.Editing(new Target(window, info.Focus, pid, identity, Rectangle.Empty)))
+                return Reject("editable-selection-unavailable");
             Rectangle editor = Rectangle.Empty, caret = Rectangle.Empty;
             bool caretKnown = false;
             if (includeGeometry)
             {
-                var bounds = element.Current.BoundingRectangle;
-                editor = !bounds.IsEmpty && bounds.Width > 0
-                    ? CaretGeometry.Bounds(bounds.X, bounds.Y, bounds.Width, bounds.Height) : Rectangle.Empty;
+                try
+                {
+                    var bounds = element.Current.BoundingRectangle;
+                    editor = !bounds.IsEmpty && bounds.Width > 0
+                        ? CaretGeometry.Bounds(bounds.X, bounds.Y, bounds.Width, bounds.Height) : Rectangle.Empty;
+                }
+                catch { /* Optional layout is independent of editability. */ }
                 if (info.Caret != 0 && Native.GetAncestor(info.Caret, 2) == window)
                 {
                     Native.GetWindowThreadProcessId(info.Caret, out uint caretPid);
@@ -180,21 +212,23 @@ internal sealed record Target(nint Window, nint Focus, uint Process, string Iden
                 if (caret.IsEmpty)
                     caret = TextCaret(element, editor);
                 caretKnown = !caret.IsEmpty;
-                if (!caretKnown)
+                if (!caretKnown && !editor.IsEmpty)
                 {
-                    if (editor.IsEmpty)
-                        return null;
                     // Explicitly mark the fallback as editor geometry, not a caret.
                     caret = new Rectangle(editor.Left, editor.Bottom - 1, 1, 1);
                 }
             }
-            // UI Automation can yield while another application takes focus.
+            // UI Automation can yield while another shape/control in the SAME
+            // HWND takes focus. Recheck UIA identity as well as native focus.
+            var focused = AutomationElement.FocusedElement;
+            if (focused == null || string.Join(".", focused.GetRuntimeId()) != identity)
+                return Reject("uia-focus-changed");
             var latest = new Native.GuiThreadInfo { Size = info.Size };
             if (Native.GetForegroundWindow() != window ||
                 !Native.GetGUIThreadInfo(thread, ref latest) || latest.Focus != info.Focus)
-                return null;
+                return Reject("native-focus-changed");
             return new Target(window, info.Focus, pid, identity, caret, editor, caretKnown);
         }
-        catch { return null; } // Inaccessible/elevated/secure targets never authorize input.
+        catch (Exception error) { return Reject("provider-" + error.GetType().Name); }
     }
 }

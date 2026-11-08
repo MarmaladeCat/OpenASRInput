@@ -2,8 +2,10 @@
 
 import argparse
 import ctypes
+import hashlib
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 import time
@@ -44,6 +46,12 @@ def main():
     )
     parser.add_argument("--portal-checkout", type=Path)
     parser.add_argument("--portal-python", type=Path)
+    parser.add_argument("--bridge", type=Path, help="Bridge from an extracted current candidate")
+    parser.add_argument(
+        "--office-host",
+        action="store_true",
+        help="Run ordinary controls in a POWERPNT-named fixture (not real Office acceptance)",
+    )
     args = parser.parse_args()
     if args.microphone and (not args.portal_checkout or not args.portal_python):
         parser.error("--microphone requires explicit --portal-checkout and --portal-python")
@@ -58,11 +66,16 @@ def main():
     if not user.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4)):
         raise ctypes.WinError(ctypes.get_last_error())
     tools = ROOT / ".cache/functional/windows"
+    helper = (args.bridge or tools / "bridge/OpenASRInputBridge.exe").resolve()
+    if not helper.is_file():
+        raise RuntimeError("Windows bridge is missing; prepare the test tools or pass --bridge")
     os.environ["DOTNET_ROOT"] = str(tools / "dotnet")
-    os.environ["OPENASRINPUT_WINDOWS_HELPER"] = str(tools / "bridge/OpenASRInputBridge.exe")
+    os.environ["OPENASRINPUT_WINDOWS_HELPER"] = str(helper)
     results = ROOT / "test-results"
     results.mkdir(exist_ok=True)
     prefix = "native-microphone" if args.microphone else "native-editor"
+    if args.office_host:
+        prefix += "-office-host"
     with (
         ExitStack() as cleanup,
         tempfile.TemporaryDirectory(
@@ -98,7 +111,14 @@ def main():
                 if portal.poll() is not None or time.monotonic() >= deadline:
                     raise RuntimeError("Microphone Portal fixture failed to start")
                 time.sleep(0.05)
-        process = subprocess.Popen([str(tools / "editor/WindowsTestEditor.exe"), str(directory)])
+        editor = tools / "editor/WindowsTestEditor.exe"
+        if args.office_host:
+            # The process name must never route ALL controls through Office's
+            # slide-selection API. This fixture reproduces that routing failure
+            # without installing Office or touching a user's presentation.
+            editor = tools / "editor/POWERPNT.exe"
+            shutil.copy2(tools / "editor/WindowsTestEditor.exe", editor)
+        process = subprocess.Popen([str(editor), str(directory)])
         try:
             identity = directory / "editor-identity.json"
             deadline = time.monotonic() + 60
@@ -119,6 +139,8 @@ def main():
             os.environ["OPENASRINPUT_TEST_TARGET_PROCESS_ID"] = str(process.pid)
             metadata = {
                 "editor": information,
+                "officeHostFixture": args.office_host,
+                "bridgeSha256": hashlib.sha256(helper.with_suffix(".dll").read_bytes()).hexdigest(),
                 "browser": json.loads(
                     (directory / "browser-ready.json").read_text(encoding="utf-8")
                 ),

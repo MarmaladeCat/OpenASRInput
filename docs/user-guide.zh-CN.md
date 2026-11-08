@@ -2,7 +2,7 @@
 
 [English](user-guide.md) | **简体中文**
 
-适用版本：**1.0.1**。本手册从首次安装讲到日常听写、选区修改、多服务切换和故障恢复。接口开发见 [API](API.zh-CN.md)，源码构建见 [开发说明](development.zh-CN.md)。项目采用 [GPL v3](../LICENSE)。
+适用版本：**1.0.2**。本手册从首次安装讲到日常听写、选区修改、多服务切换和故障恢复。接口开发见 [API](API.zh-CN.md)，源码构建见 [开发说明](development.zh-CN.md)。项目采用 [GPL v3](../LICENSE)。
 
 ## 1. 软件的逻辑架构
 
@@ -39,14 +39,14 @@ Windows 使用 x64 MSI；Linux Debian/Ubuntu 系使用 amd64 或 ARM64 deb。`am
 从发行目录取安装包及其同名 `文件名.sha256`，每份校验文件只含对应安装包的一行记录。Linux 在下载目录运行 `sha256sum -c 文件名.sha256`。Windows 用 PowerShell：
 
 ```powershell
-Get-FileHash .\OpenASRInput_1.0.1_windows_amd64_native.msi -Algorithm SHA256
+Get-FileHash .\OpenASRInput_1.0.2_windows_amd64_native.msi -Algorithm SHA256
 ```
 
 将输出与清单的同名条目比较。完整文档 ZIP 解压时保留目录结构，图片在 `docs/images/`。
 
 ### 2.2 Windows 安装与首次启动
 
-1. 运行 `OpenASRInput_1.0.1_windows_amd64_native.msi`，按向导完成安装。
+1. 运行 `OpenASRInput_1.0.2_windows_amd64_native.msi`，按向导完成安装。
 2. 从开始菜单打开 OpenASRInput 设置。独立 Input MSI 不包含 Portal；已有远程 Portal 的用户直接使用管理员提供的地址。
 3. 在 Windows“设置 → 隐私和安全性 → 麦克风”允许桌面应用访问麦克风，并在系统声音设置确认设备未静音。
 4. 按下文完成 Portal 卡、麦克风、原生桥接状态三项检查。
@@ -61,7 +61,7 @@ Get-FileHash .\OpenASRInput_1.0.1_windows_amd64_native.msi -Algorithm SHA256
 在下载目录执行（ARM64 换成相应文件）：
 
 ```bash
-sudo apt install ./OpenASRInput_1.0.1_linux_amd64_local-auto.deb
+sudo apt install ./OpenASRInput_1.0.2_linux_amd64_local-auto.deb
 openasrinput settings
 ```
 
@@ -212,6 +212,8 @@ Linux 的“普通雾凇键盘输入使用内联预编辑”只针对普通拼�
 ### 文字在面板里，但目标应用没有收到？
 
 确认 Linux 正在使用所选输入框架、Windows 桥接已运行，且目标是可编辑控件、焦点未变。普通编辑器可用而特定应用失败时，说明需检查该应用的输入/选区能力或权限差异。设置页截图和模拟 demo 都不能证明原生输入成功。
+
+在 PowerPoint 中，先进入文字编辑状态，让形状或备注区内出现光标或文字选区，再按 Shift+Space；只有形状边框不算文字输入目标。Office 未提供 UIA 文本范围时，临时识别保留在面板，稳定文字通过原生选区提交；内联修订和选中文字指令依赖相应提供者能力。若仍无法开始，请提供准确 Office 版本，并注明是幻灯片文本框、占位符、表格单元格还是备注区。不同 Office 版本须分别完成[原生验收](testing.zh-CN.md)。
 
 ### 麦克风很小声、全是噪声或校准没有提升？
 

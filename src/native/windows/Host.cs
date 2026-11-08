@@ -256,6 +256,7 @@ internal sealed class Host : Forms.Form
                         screenMode,
                         screenFailure = screenBuffer.LastFailure,
                         officeStatus = OfficeInsertion.LastStatus,
+                        targetReadFailure = Target.LastFailure,
                         lastCommitResult,
                         lastCommitCharacters,
                         lastInsertionMethod = TextInsertion.LastMethod,

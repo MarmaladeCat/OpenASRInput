@@ -55,12 +55,48 @@
       ],
       "suite": "windows-native",
       "title": "原生输入桥接与可丢弃编辑器联测",
-      "expected": "实际 Windows helper、UI Automation、TextBox/RichTextBox/WebView2 验证预览修订、定稿、取消、选区替换与焦点隔离；缺少桌面或跳过用例时失败。",
+      "expected": "实际 Windows helper、UI Automation、TextBox/RichTextBox/WPF/WebView2 验证预览修订、定稿、取消、选区替换、可选提供者故障、只读恢复与焦点隔离；缺少桌面或跳过用例时失败。",
       "timeout": 600,
       "command": [
         "{python}",
         "tests/functional/check_windows_editor.py"
       ]
+    },
+    {
+      "id": "native-office-controls",
+      "suite": "windows-native",
+      "title": "Office 进程中的普通输入控件路由回归",
+      "expected": "POWERPNT 命名的专用夹具内实际 TextBox/RichTextBox/WebView2 仍按控件能力输入；覆盖预览、选区、取消与焦点隔离。这不是实际 PowerPoint 验收。",
+      "timeout": 600,
+      "artifacts": [
+        "test-results/native-editor-office-host-environment.json",
+        "test-results/native-editor-office-host-result.json",
+        "test-results/native-editor-office-host-desktop.png"
+      ],
+      "command": [
+        "{python}",
+        "tests/functional/check_windows_editor.py",
+        "--office-host"
+      ]
+    },
+    {
+      "id": "native-target-rules",
+      "suite": "windows-native",
+      "title": "可编辑性、可选 UIA 能力与同窗口焦点切换",
+      "expected": "运行实际 Target、InsertionEvidence、InsertionCheckpoint 代码：可选 UIA 读取/确认故障彼此隔离，限长基线和重入焦点变化正确处理；只读、密码、禁用与失焦仍拒绝。无桌面 API 的规则测试。",
+      "command": [
+        "{python}",
+        "tests/functional/check_windows_rules.py"
+      ]
+    },
+    {
+      "id": "powerpoint-editor",
+      "suite": "windows-office",
+      "title": "实际 PowerPoint 文本框、备注与表格单元格",
+      "expected": "已安装 PowerPoint 的隔离桌面中新建可丢弃演示文稿，验证实际桥接的插入、替换、预览修订、取消、长文本、跨形状隔离；缺少 Office 失败而非跳过。",
+      "timeout": 600,
+      "artifacts": ["test-results/native-powerpoint-result.json"],
+      "command": ["{python}", "tests/functional/check_windows_powerpoint.py"]
     },
     {
       "id": "settings-service",

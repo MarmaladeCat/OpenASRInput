@@ -13,6 +13,9 @@
 - `microphone-calibration`：实际页面完成校准、复测、独立验证、取消和保存；使用合成 PCM/模拟识别。
 - `native-editor`（Windows 专项）：实际 helper/UI Automation 与专用 TextBox/RichTextBox/WebView2
   编辑器验证文字上屏、修订、取消、选区替换及焦点保护；缺环境或跳过不能算通过。
+- `native-office-controls`（Windows）：在名为 POWERPNT 的专用编辑器夹具中执行同样流程，检查整进程路由错误；不是实际 Office 验证。
+- `native-target-rules`（Windows）：无桌面的目标/原生选区/证据契约测试，包括各 UIA 能力独立失败、旧 Office 回退、重入焦点变化、限长确认以及写入不确定性。
+- `powerpoint-editor`（显式选择 `windows-office`）：实际 PowerPoint 中创建可丢弃演示文稿；见 [Office 验收](../../docs/testing.zh-CN.md#windows-编辑器兼容性)。缺少 Office 明确失败。
 
 在本产品仓库根目录执行，Python 3.10+：
 
@@ -29,6 +32,7 @@ python scripts/test.py run --suite windows-native --execution-host virtual-machi
 入口自动准备本产品测试环境、UI 工具和搜索路径 `src`、`tests`；UI 使用 Electron 44.4.5，执行时将 `OPENASRINPUT_TEST_PYTHON` 指向本产品 venv。直接调试清单命令时需自行设置相同环境。物理 Windows 主机把 execution-host 改为 physical。
 原生专项 setup 调用 `prepare_windows.ps1`，run 调用 `check_windows_editor.py`。
 .NET SDK 固定版本并校验 SHA-512，放本产品 `.cache/functional/windows/`。
+编辑器包含真实 WPF 提供者故障夹具：Value getter 可在文字送达前/后失败而 TextPattern 仍可用；无证据模式须保留面板预览，拒绝提交且不修改文字。原生、WPF、Chromium 控件还在绑定轮次中切换只读/可写，验证授权撤销与恢复。
 执行器等待 WebView2 就绪并核验窗口进程身份；Windows 拒绝后台激活时，只在命中检测确认
 属于专用编辑器的坐标点击，再核验前台进程。退出前保存 `test-results/native-editor-desktop.png`。
 测试驱动声明 Per-Monitor V2 DPI 感知，避免高 DPI 下窗口位置与点击命中检测使用不同坐标。
