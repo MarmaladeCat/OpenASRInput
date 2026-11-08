@@ -2,7 +2,7 @@
 
 **English** | [简体中文](installation.zh-CN.md)
 
-This page describes 1.0.2 candidates for maintainer review and manual testing. Existing published 1.0.0 packages predate these installation and language changes. Publication follows approval of the candidates.
+This page describes Input 1.0.2 installation and the combined Input 1.0.2 + Portal 1.0.1 packages. Each component keeps its own product version.
 
 ## Choose your installation
 
@@ -33,6 +33,8 @@ SID/UID identifies the OS account, independent of its display name. Each user's 
 Old default Input configurations in `%APPDATA%\OpenASRInput` or the XDG configuration directory are copied once, including card metadata. Running-session markers are not migrated. Portal migrates old default service configuration and data while the service is stopped. Legacy copies remain for recovery; verify the new installation before removing backups. Explicit `OPENASRINPUT_CONFIG` instances stay isolated, and Portal's custom data paths are retained.
 
 Source-only runs without an installed data root retain APPDATA/XDG behavior. Connection and About always shows the actual Input configuration path. Back up the entire actual configuration directory; for Portal include both `portal.db` and `asr-key-vault.key`. Windows uninstall offers retention or explicit deletion; Linux `apt remove` retains data.
+
+Windows maintenance and uninstall use the registered application directory, including custom installation paths. The choice to retain or delete configuration is separate from the application location.
 
 ## Chinese and English
 

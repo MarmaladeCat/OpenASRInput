@@ -31,6 +31,10 @@ For package-native acceptance, run `tests/functional/check_windows_editor.py --b
 
 The disposable editor also hosts a real WPF text box whose optional Value getter can fail before or after insertion while TextPattern still works. Verify selected-position Unicode insertion, idempotent replay, panel-only preview and zero writes when all confirmation channels are unavailable, and read-only/recovery transitions across WinForms, WPF, and Chromium. Headless rules independently fault value/text/selection/count capabilities and trigger focus changes inside provider calls; they execute the actual evidence and continuation code. Missing capability is not permission to ignore explicit protection or to replay an uncertain write.
 
+Windows installer acceptance must also use isolated, nondefault program and configuration directories. Exercise native uninstall with configuration retained, reinstallation, and explicit configuration deletion; verify both the custom application payload and requested data are removed. Package checks require current-user installation-directory discovery before directory costing, so maintenance does not silently fall back to the default path.
+
+Extracted-runtime checks must set a disposable `OPENASR_DATA_ROOT` as well as the configuration file; an installed shared root can otherwise redirect runtime state outside APPDATA. Chromium read-only fixture commands acknowledge UIA publication (or the resulting focus loss), independently of bridge validity. A DOM mutation acknowledgement alone does not establish accessibility readiness.
+
 For real Office, explicitly run on an isolated interactive desktop with Microsoft PowerPoint installed:
 
 ```powershell

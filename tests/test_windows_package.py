@@ -24,6 +24,7 @@ def check_windows_runtime(root, stage):
     environment = {
         **os.environ,
         "APPDATA": str(stage / "appdata"),
+        "OPENASR_DATA_ROOT": str(stage / "state"),
         "OPENASRINPUT_CONFIG": str(stage / "input.json"),
         "OPENASRINPUT_SETTINGS_PORT": "0",
     }
@@ -36,7 +37,24 @@ def check_windows_runtime(root, stage):
         )
     )
     assert check["ok"] and check["platform"] == "win32"
-    ready = stage / "appdata/OpenASRInput/settings-ready.json"
+    runtime = json.loads(
+        subprocess.check_output(
+            [
+                command[0],
+                "-B",
+                "-c",
+                "import json, openasrinput; "
+                "from openasrinput.infrastructure.platform_support import config_home; "
+                "print(json.dumps({'home': str(config_home()), 'module': openasrinput.__file__}))",
+            ],
+            env=environment,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
+    )
+    home = Path(runtime["home"])
+    assert home.is_relative_to(stage / "state"), "runtime state must stay in the disposable profile"
+    assert Path(runtime["module"]).is_relative_to(root), "use the packaged application"
+    ready = home / "settings-ready.json"
     process = subprocess.Popen(
         [*command, "--background"],
         env=environment,
@@ -45,7 +63,9 @@ def check_windows_runtime(root, stage):
     try:
         deadline = time.monotonic() + 15
         while not ready.is_file():
-            assert process.poll() is None and time.monotonic() < deadline, "packaged app startup"
+            assert process.poll() is None and time.monotonic() < deadline, (
+                f"packaged app startup: exit={process.poll()}, ready={ready}"
+            )
             time.sleep(0.05)
         address = json.loads(ready.read_text(encoding="utf-8"))["url"]
         origin, token = address.split("/#token=")
@@ -149,7 +169,8 @@ def main():
     parser.add_argument(
         "--package",
         type=Path,
-        default=ROOT / f".cache/build/artifacts/windows/amd64/native/OpenASRInput_{VERSION}_win-x64.msi",
+        default=ROOT
+        / f".cache/build/artifacts/windows/amd64/native/OpenASRInput_{VERSION}_win-x64.msi",
     )
     args = parser.parse_args()
     package = args.package.resolve()
@@ -194,11 +215,28 @@ def main():
         assert {
             "REMOVEUSERDATA",
             "INPUTDATADIR",
+            "INSTALLDIR",
             "REPLACE_INPUT_PRODUCT",
             "REPLACE_PORTAL_PRODUCT",
             "REPLACE_BUNDLE_PRODUCT",
         } <= set(secure.split(";"))
         registry = table("Registry")
+        searches = {
+            row.split("\t")[0]: row.split("\t")[1]
+            for row in table("AppSearch").splitlines()[3:]
+            if row
+        }
+        locators = {
+            row.split("\t")[0]: row.split("\t")[1:]
+            for row in table("RegLocator").splitlines()[3:]
+            if row
+        }
+        assert locators[searches["INSTALLDIR"]] == [
+            "1",
+            "Software\\OpenASRInput",
+            "InstallDir",
+            "18",
+        ], "maintenance must resolve this user's actual 64-bit installation directory"
         assert "CurrentVersion\\Run" in registry and "--background" in registry
         assert all(line.split("\t")[1] == "1" for line in registry.splitlines()[3:] if line)
         shortcuts = table("Shortcut")
@@ -244,6 +282,7 @@ def main():
             assert bool(removable) == allowed, version
         assert "Installed OR NOT NEWERVERSION" in table("LaunchCondition")
         steps = {row.split("\t")[0]: row.split("\t") for row in sequence.splitlines()[3:] if row}
+        assert int(steps["AppSearch"][2]) < int(steps["CostFinalize"][2])
         assert int(steps["StopInput"][2]) < int(steps["InstallValidate"][2])
         assert int(steps["GuardReplacement"][2]) < int(steps["InstallInitialize"][2])
         assert "REPLACE_INPUT_PRODUCT" in steps["GuardReplacement"][1]

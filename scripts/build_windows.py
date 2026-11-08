@@ -276,6 +276,17 @@ def wix(payload, filename):
     element(product, "Property", Id="OPENASR_PREVIOUS_INSTALLATION", Secure="yes")
     element(product, "Property", Id="REMOVEUSERDATA", Value="0", Secure="yes")
     element(product, "Property", Id="INPUTDATADIR", Secure="yes")
+    previous_install = element(product, "Property", Id="INSTALLDIR", Secure="yes")
+    element(
+        previous_install,
+        "RegistrySearch",
+        Id="PreviousInputInstallDir",
+        Root="HKCU",
+        Key="Software\\OpenASRInput",
+        Name="InstallDir",
+        Type="raw",
+        Win64="yes",
+    )
     state = element(product, "Property", Id="LEGACYINPUTDATADIR", Secure="yes")
     element(
         state,

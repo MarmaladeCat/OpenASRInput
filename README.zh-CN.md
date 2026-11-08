@@ -8,7 +8,7 @@
 
 Input 需要 [OpenASRPortal](https://github.com/MarmaladeCat/OpenASRPortal) 提供识别服务。可从 [Portal 下载页](https://github.com/MarmaladeCat/OpenASRPortal/releases) 安装到本机，或连接现有远程 Portal。按照 [Portal 配置手册](https://github.com/MarmaladeCat/OpenASRPortal/blob/main/docs/user-guide.zh-CN.md) 设置管理密码、添加上游并创建客户端 ASR Key。
 
-希望一次安装两产品，请看 [合体安装、持久配置与语言选择](docs/installation.zh-CN.md)。合体候选覆盖 Windows x64、Linux amd64/ARM64，正式发布待审核。
+希望一次安装两产品，请看 [合体安装、持久配置与语言选择](docs/installation.zh-CN.md)。合体安装包覆盖 Windows x64、Linux amd64/ARM64，包含 Input 1.0.2 + Portal 1.0.1。
 
 - **安装和使用**：[Windows / Linux 图文手册](docs/user-guide.zh-CN.md)。需要 Portal 地址和客户端识别 Key。
 - **开发对接**：[接口与输入语义](docs/API.zh-CN.md)，描述外部连接和本地桥接边界。

@@ -1,6 +1,7 @@
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using System.Windows.Automation;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
@@ -157,6 +158,32 @@ internal sealed class TestEditor : Form
         File.WriteAllText(Path.Combine(directory, "editor-keys.json"), JsonSerializer.Serialize(keyEvents));
     }
 
+    private static async Task WaitForReadOnlyPublication(int[] identity)
+    {
+        // ExecuteScriptAsync confirms the DOM mutation, not Chromium's separate
+        // accessibility-tree update. Observe UIA independently of the bridge so
+        // the test can still catch a bridge that ignores published protection.
+        var elapsed = System.Diagnostics.Stopwatch.StartNew();
+        while (elapsed.Elapsed < TimeSpan.FromSeconds(2))
+        {
+            bool published = await Task.Run(() =>
+            {
+                var focused = AutomationElement.FocusedElement;
+                if (focused == null || !focused.GetRuntimeId().SequenceEqual(identity))
+                    return true; // A contenteditable may lose focus when disabled.
+                if (focused.TryGetCurrentPattern(ValuePattern.Pattern, out var value) &&
+                    ((ValuePattern)value).Current.IsReadOnly)
+                    return true;
+                return focused.TryGetCurrentPattern(TextPattern.Pattern, out var text) &&
+                    ((TextPattern)text).DocumentRange.GetAttributeValue(TextPattern.IsReadOnlyAttribute) is true;
+            });
+            if (published)
+                return;
+            await Task.Delay(20);
+        }
+        throw new InvalidOperationException("Chromium did not publish the read-only transition to UIA");
+    }
+
     private async void Command()
     {
         string path = Path.Combine(directory, "editor-command.json");
@@ -210,11 +237,16 @@ internal sealed class TestEditor : Form
                     throw new InvalidOperationException("Chromium fixture is not ready");
                 if (action == "focus")
                     browser.Focus();
+                bool readOnly = value.TryGetProperty("enabled", out var enabled) && enabled.GetBoolean();
+                int[]? identity = action == "readonly" && readOnly
+                    ? await Task.Run(() => AutomationElement.FocusedElement.GetRuntimeId()) : null;
                 string args = string.Join(",", JsonSerializer.Serialize(action), JsonSerializer.Serialize(control[4..]),
                     value.TryGetProperty("start", out var start) ? start.GetInt32() : 0,
                     value.TryGetProperty("length", out var length) ? length.GetInt32() : 0,
-                    JsonSerializer.Serialize(value.TryGetProperty("enabled", out var enabled) && enabled.GetBoolean()));
+                    JsonSerializer.Serialize(readOnly));
                 await browser.ExecuteScriptAsync("window.fixture(" + args + ")");
+                if (identity != null)
+                    await WaitForReadOnlyPublication(identity);
             }
             else
             {

@@ -8,7 +8,7 @@
 
 Input needs [OpenASRPortal](https://github.com/MarmaladeCat/OpenASRPortal) for recognition. Install it locally from [Portal downloads](https://github.com/MarmaladeCat/OpenASRPortal/releases), or connect to an existing remote Portal. Follow the [Portal configuration guide](https://github.com/MarmaladeCat/OpenASRPortal/blob/main/docs/user-guide.md) to set an administrator password, add an upstream, and issue a client ASR key.
 
-For one installation of both products, see [combined installation, persistent configuration, and language selection](docs/installation.md). Combined candidates target Windows x64 and Linux amd64/ARM64; their release publication is pending review.
+For one installation of both products, see [combined installation, persistent configuration, and language selection](docs/installation.md). Combined installers target Windows x64 and Linux amd64/ARM64 and contain Input 1.0.2 + Portal 1.0.1.
 
 - **Install and use:** [illustrated Windows / Linux guide](docs/user-guide.md). You need a Portal address and client ASR key.
 - **Integrate:** [interfaces and input semantics](docs/API.md), covering external connections and local bridge boundaries.
