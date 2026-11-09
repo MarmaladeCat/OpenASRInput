@@ -2,7 +2,7 @@
 
 [English](user-guide.md) | **简体中文**
 
-适用版本：**1.0.2**。本手册从首次安装讲到日常听写、选区修改、多服务切换和故障恢复。接口开发见 [API](API.zh-CN.md)，源码构建见 [开发说明](development.zh-CN.md)。项目采用 [GPL v3](../LICENSE)。
+适用版本：**1.1.0**。本手册从首次安装讲到日常听写、选区修改、多服务切换和故障恢复。接口开发见 [API](API.zh-CN.md)，源码构建见 [开发说明](development.zh-CN.md)。项目采用 [GPL v3](../LICENSE)。
 
 ## 1. 软件的逻辑架构
 
@@ -39,14 +39,14 @@ Windows 使用 x64 MSI；Linux Debian/Ubuntu 系使用 amd64 或 ARM64 deb。`am
 从发行目录取安装包及其同名 `文件名.sha256`，每份校验文件只含对应安装包的一行记录。Linux 在下载目录运行 `sha256sum -c 文件名.sha256`。Windows 用 PowerShell：
 
 ```powershell
-Get-FileHash .\OpenASRInput_1.0.2_windows_amd64.msi -Algorithm SHA256
+Get-FileHash .\OpenASRInput_1.1.0_windows_amd64.msi -Algorithm SHA256
 ```
 
 将输出与对应 `.sha256` 文件比较。中英文手册及图片可在本仓库在线阅读。
 
 ### 2.2 Windows 安装与首次启动
 
-1. 运行 `OpenASRInput_1.0.2_windows_amd64.msi`，按向导完成安装。
+1. 运行 `OpenASRInput_1.1.0_windows_amd64.msi`，按向导完成安装。
 2. 从开始菜单打开 OpenASRInput 设置。独立 Input MSI 不包含 Portal；已有远程 Portal 的用户直接使用管理员提供的地址。
 3. 在 Windows“设置 → 隐私和安全性 → 麦克风”允许桌面应用访问麦克风，并在系统声音设置确认设备未静音。
 4. 按下文完成 Portal 卡、麦克风、原生桥接状态三项检查。
@@ -61,7 +61,7 @@ Get-FileHash .\OpenASRInput_1.0.2_windows_amd64.msi -Algorithm SHA256
 在下载目录执行（ARM64 换成相应文件）：
 
 ```bash
-sudo apt install ./OpenASRInput_1.0.2_linux_amd64.deb
+sudo apt install ./OpenASRInput_1.1.0_linux_amd64.deb
 openasrinput settings
 ```
 

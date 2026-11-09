@@ -2,20 +2,20 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-**1.0.2** · System-wide voice input. Capture microphone audio, recognize through Portal, preview, and commit to the active input target. Linux supports IBus, Fcitx5, and Fcitx4 on X11; Windows uses an independent native bridge.
+**1.1.0** · System-wide voice input. Capture microphone audio, recognize through Portal, preview, and commit to the active input target. Linux supports IBus, Fcitx5, and Fcitx4 on X11; Windows uses an independent native bridge.
 
 ## Start here
 
 Input needs [OpenASRPortal](https://github.com/MarmaladeCat/OpenASRPortal) for recognition. Install it locally from [Portal downloads](https://github.com/MarmaladeCat/OpenASRPortal/releases), or connect to an existing remote Portal. Follow the [Portal configuration guide](https://github.com/MarmaladeCat/OpenASRPortal/blob/main/docs/user-guide.md) to set an administrator password, add an upstream, and issue a client ASR key.
 
-For one installation of both products, see [combined installation, persistent configuration, and language selection](docs/installation.md). Combined installers target Windows x64 and Linux amd64/ARM64 and contain Input 1.0.2 + Portal 1.0.1.
+For one installation of both products, see [combined installation, persistent configuration, and language selection](docs/installation.md). Combined installers target Windows x64 and Linux amd64/ARM64 and contain Input 1.1.0 + Portal 1.1.0.
 
 - **Install and use:** [illustrated Windows / Linux guide](docs/user-guide.md). You need a Portal address and client ASR key.
 - **Integrate:** [interfaces and input semantics](docs/API.md), covering external connections and local bridge boundaries.
 - **Understand:** [architecture](docs/architecture.md).
 - **Modify and package:** [development and releases](docs/development.md).
 - **Verify:** [test environments and requirements](docs/testing.md).
-- **Release:** [1.0.2 release notes](docs/release.md).
+- **Release:** [1.1.0 release notes](docs/release.md).
 
 This product can be cloned, developed, tested, and released independently, without a shared product database. Source requires Python 3.10+; native bridges need platform toolchains. Packaged Input includes a private Python runtime. Test Electron is not a product runtime dependency.
 

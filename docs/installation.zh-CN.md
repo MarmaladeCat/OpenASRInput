@@ -2,11 +2,11 @@
 
 [English](installation.md) | **简体中文**
 
-本页说明 Input 1.0.2 安装及 Input 1.0.2 + Portal 1.0.1 组合安装包，各组件保持独立产品版本。
+本页说明 Input 1.1.0 安装及 Input 1.1.0 + Portal 1.1.0 组合安装包，各组件保持独立产品版本。
 
 ## 选择安装方式
 
-- **Input + Portal 合体安装**：Windows x64 为一个 MSI；Linux amd64/ARM64 为包含两个 DEB 和 `install.sh` 的归档包，计划放在 [Input Release 下载页](https://github.com/MarmaladeCat/OpenASRInput/releases)。Windows 保持勾选 Portal；Linux 解压后以桌面用户运行 `./install.sh`，通过 sudo 和 APT 一次安装两产品。发行版依赖可能需要联网下载。
+- **Input + Portal 合体安装**：Windows x64 为一个 MSI；Linux amd64/ARM64 为内置两个应用及私有运行时的单个 DEB，计划放在 [Input Release 下载页](https://github.com/MarmaladeCat/OpenASRInput/releases)。Windows 保持勾选 Portal；Linux 用图形包管理器打开 DEB，或运行 `sudo apt install ./OpenASRInput_1.1.0_linux_amd64_OpenASRPortal_1.1.0.deb`（ARM64 将 `amd64` 换为 `arm64`）。发行版依赖可能需要联网下载。
 - **仅安装 Input**：已有 Portal 时可使用独立包。[Portal 项目](https://github.com/MarmaladeCat/OpenASRPortal)、[下载页](https://github.com/MarmaladeCat/OpenASRPortal/releases) 和 [配置手册](https://github.com/MarmaladeCat/OpenASRPortal/blob/main/docs/user-guide.zh-CN.md) 说明部署步骤。Input 需要可用的本机或远程 Portal 才能识别。
 
 同时下载安装包及其同名 `文件名.sha256`。每份校验文件只包含对应安装包的一行记录；Linux 执行 `sha256sum -c 文件名.sha256`，Windows 用 `Get-FileHash 文件名 -Algorithm SHA256` 对照该记录。
@@ -15,11 +15,13 @@
 
 合体安装器为安装时的桌面账户创建独立 ASR Key，通过 Input 的公开配置命令导入；后续安装复用同一有效安装身份。管理员密码不是 Input 的识别 Key。
 
-- **首次安装**：Portal 启动后，交互式安装在尚无管理员时打开本机 `/admin/setup`。设置管理密码、配置上游，再测试输入。安装器不提供默认管理密码。
+- **首次安装**：Portal 启动后，Windows 交互式安装或 Linux 配置入口在尚无管理员时打开本机 `/admin/setup`。设置管理密码、配置上游，再测试输入。安装器不提供默认管理密码。
 - **升级**：保留配置、管理员身份、客户端 Key 和热词；已经初始化时不再打开首次设置页。
 - **卸载但保留配置后重装**：复用保留的配置；若之前没有完成管理密码设置，则继续进入初始化页面。
 
-Windows 静默安装（`/qn` 或 `OPENASRINPUT_NO_LAUNCH=1`）和 Linux `./install.sh --no-open` 由用户自行打开页面。Linux 直接使用 root 时须指定 `--user 账户`。没有图形会话时手动访问 Portal，通常为 `http://127.0.0.1:10087/admin`；自定义端口会保留。Linux 安装不会重启桌面或输入框架，按 [用户手册](user-guide.zh-CN.md) 启动和选择引擎。
+Windows 静默安装（`/qn` 或 `OPENASRINPUT_NO_LAUNCH=1`）由用户自行打开页面。Linux 包安装不打开浏览器：sudo 安装会连接调用账户；图形/root 安装后从应用菜单打开 **OpenASR Input + Portal 配置**，或执行 `sudo openasrinput-portal-setup --user 账户 --no-open`。没有图形会话时手动访问 Portal，通常为 `http://127.0.0.1:10087/admin`；自定义端口会保留。Linux 安装不会重启桌面或输入框架，按 [用户手册](user-guide.zh-CN.md) 启动和选择引擎。
+
+APT 用 `openasrinput-portal` 管理两个应用。安装合体包会替换独立的 `openasrinput` 与 `openasrportal`，也适用于旧归档安装器装入的独立包，并保留数据。用 `sudo apt remove openasrinput-portal` 一次卸载；`purge` 也保留产品数据。改回独立安装时，用 APT 同时安装两个独立 DEB，替换合体包。
 
 ## 固定持久目录
 
