@@ -157,7 +157,7 @@ def collect(platform, arch):
                 candidates.append(
                     (
                         path,
-                        f"{name}_{version}_{platform}_{arch}_{'docker' if variant.name == 'container' else 'local-' + variant.name if platform == 'linux' and variant.name != 'local' else variant.name}{extension}",
+                        f"{name}_{version}_{platform}_{arch}{extension}",
                         variant.name,
                     )
                 )
@@ -165,6 +165,8 @@ def collect(platform, arch):
         raise ValueError(
             "Build the product in .cache/build/artifacts/<platform>/<arch>/<variant>/ first"
         )
+    if len({filename for _, filename, _ in candidates}) != len(candidates):
+        raise ValueError("Multiple candidates have the same public package filename")
     cache = ROOT / ".cache/release"
     cache.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=cache) as temporary:

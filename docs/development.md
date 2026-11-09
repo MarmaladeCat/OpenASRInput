@@ -51,6 +51,8 @@ Windows native packaging and test setup explicitly rebuild the bridge before pub
 
 ## Releases and documentation
 
+Public package filenames are `OpenASRInput_<version>_<os>_<architecture>.<extension>`. Combined installers append `_OpenASRPortal_<portal-version>` before the extension; each component keeps its own version. GitHub Release attachments contain only packages and their exact `.sha256` companions. Publish authored notes in the release body with links to repository documentation. Local release directories retain the full documentation and provenance inventory described below.
+
 For a docs-only preview, create `test-results/`, then run `python scripts/release.py --docs test-results/product-docs.zip`. All authored Markdown, images, and linked attachments retain their original bytes and relative paths. Flat releases include `release.md` / `release.zh-CN.md` beside identical README copies to keep language links valid.
 
 VERSION and tool metadata are **1.0.2**. Candidates go to `.cache/build/artifacts/<os>/<arch>/<variant>/`; `scripts/release.py` publishes successful candidates to `release/1.0.2/`, never dist/. The version directory contains flat packages, complete docs ZIP, bilingual READMEs, manifest, and SHA256SUMS.

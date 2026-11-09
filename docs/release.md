@@ -15,9 +15,9 @@ Product and package versions are 1.0.2; public recognition protocol remains v1. 
 
 Input requires [OpenASRPortal](https://github.com/MarmaladeCat/OpenASRPortal), locally or remotely. [Download Portal](https://github.com/MarmaladeCat/OpenASRPortal/releases) and follow its [configuration guide](https://github.com/MarmaladeCat/OpenASRPortal/blob/main/docs/user-guide.md). The Input release page is the intended home of combined Input + Portal installers.
 
-Choose Linux `*_linux_amd64_local-auto.deb` or `*_linux_arm64_local-auto.deb` for your CPU, or Windows `*_windows_amd64_native.msi`. Packages include private Python; Linux still needs the desktop's input framework.
+Standalone packages use `OpenASRInput_1.0.2_linux_amd64.deb`, `OpenASRInput_1.0.2_linux_arm64.deb`, or `OpenASRInput_1.0.2_windows_amd64.msi`. Combined packages append the included Portal version: `OpenASRInput_1.0.2_windows_amd64_OpenASRPortal_1.0.1.msi`, or `OpenASRInput_1.0.2_linux_<architecture>_OpenASRPortal_1.0.1.tar.gz`. Packages include private Python; Linux still needs the desktop's input framework.
 
-Each installer has an exact `filename.sha256` companion containing one checksum record. Local source builds also retain manifest.json and SHA256SUMS for the complete collected directory. Documentation archives contain the original bilingual pages and images. Build manifests are not platform certification.
+GitHub Release attachments contain only packages and an exact `filename.sha256` companion for each, with one checksum record. Read the [user guide](user-guide.md) and [installation guide](installation.md) online. Local source builds retain documentation archives, manifest.json, and SHA256SUMS for the complete collected directory. Build manifests are not platform certification.
 
 ## Changes in 1.0.2
 

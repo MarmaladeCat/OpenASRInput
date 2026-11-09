@@ -51,6 +51,8 @@ Windows 原生打包及测试准备会先明确重编译桥接，再发布生成
 
 ## 发布与文档维护
 
+公开软件包命名为 `OpenASRInput_<版本>_<系统>_<架构>.<后缀>`。组合包在后缀前追加 `_OpenASRPortal_<Portal版本>`，两个组件保留各自版本。GitHub Release 附件只上传软件包及对应的 `.sha256`；人工版本说明放正文，链接仓库文档。本地发行目录保留下面所述的完整文档与来源记录。
+
 单独预览文档时，先创建 `test-results/`，再运行 `python scripts/release.py --docs test-results/product-docs.zip`。全部人工 Markdown、图片和链接附件保留原始字节与相对目录。平铺发行目录在相同内容的 README 副本旁保留 `release.md` / `release.zh-CN.md`，确保语言链接有效。
 
 产品版本与工具元数据由 VERSION 指定为 **1.0.2**。候选包位于 `.cache/build/artifacts/<系统>/<架构>/<变体>/`，成功后由 `scripts/release.py` 发布到 `release/1.0.2/`，不生成产品 dist/。版本目录平铺软件包、完整 docs ZIP、中英文 README、清单与 SHA256SUMS。

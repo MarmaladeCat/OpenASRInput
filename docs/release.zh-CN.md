@@ -25,9 +25,9 @@ Windows 单独安装在维护与卸载时恢复自定义程序目录。选择卸
 
 ## 下载与阅读
 
-Linux 选择匹配 CPU 的 `*_linux_amd64_local-auto.deb` 或 `*_linux_arm64_local-auto.deb`；Windows 选择 `*_windows_amd64_native.msi`。安装包自带私有 Python，Linux 仍需对应桌面输入法框架。
+独立包为 `OpenASRInput_1.0.2_linux_amd64.deb`、`OpenASRInput_1.0.2_linux_arm64.deb` 或 `OpenASRInput_1.0.2_windows_amd64.msi`。组合包追加所含 Portal 的版本：`OpenASRInput_1.0.2_windows_amd64_OpenASRPortal_1.0.1.msi`，或 `OpenASRInput_1.0.2_linux_<架构>_OpenASRPortal_1.0.1.tar.gz`。安装包自带私有 Python，Linux 仍需对应桌面输入法框架。
 
-同目录 `OpenASRInput_1.0.2_docs.zip` 是完整人工文档，解压后从 README.md 或 docs/user-guide.md 阅读。manifest.json 记录来源与平台，SHA256SUMS 用于完整性核对；构建清单不代表平台认证。
+GitHub Release 附件只保留软件包及每包一个同名 `.sha256`，每份只含一行校验记录。在线阅读[使用手册](user-guide.zh-CN.md)和[安装说明](installation.zh-CN.md)。本地构建目录保留完整文档归档、manifest.json 和 SHA256SUMS；构建清单不代表平台认证。
 
 ## 兼容与升级
 
