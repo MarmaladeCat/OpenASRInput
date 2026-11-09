@@ -2,11 +2,11 @@
 
 **English** | [简体中文](installation.zh-CN.md)
 
-This page describes Input 1.1.0 installation and the combined Input 1.1.0 + Portal 1.1.0 packages. Each component keeps its own product version.
+This page describes Input 1.1.1 installation and the combined Input 1.1.1 + Portal 1.1.1 packages. Each component keeps its own product version.
 
 ## Choose your installation
 
-- **Input + Portal:** one Windows x64 MSI, or one Linux amd64/ARM64 DEB containing both applications and private runtimes. These are intended for the [Input release downloads](https://github.com/MarmaladeCat/OpenASRInput/releases). On Windows leave Portal selected. On Linux open the DEB with a package manager, or run `sudo apt install ./OpenASRInput_1.1.0_linux_amd64_OpenASRPortal_1.1.0.deb` (use `arm64` for ARM64). Distribution dependencies may need network access.
+- **Input + Portal:** one Windows x64 MSI, or one Linux amd64/ARM64 DEB containing both applications and private runtimes. These are intended for the [Input release downloads](https://github.com/MarmaladeCat/OpenASRInput/releases). On Windows leave Portal selected. On Linux open the DEB with a package manager, or run `sudo apt install ./OpenASRInput_1.1.1_linux_amd64_OpenASRPortal_1.1.1.deb` (use `arm64` for ARM64). Distribution dependencies may need network access.
 - **Input alone:** use the standalone package if a Portal is already available. [Portal project](https://github.com/MarmaladeCat/OpenASRPortal), [downloads](https://github.com/MarmaladeCat/OpenASRPortal/releases), and [configuration guide](https://github.com/MarmaladeCat/OpenASRPortal/blob/main/docs/user-guide.md) explain deployment. Input does not recognize speech without a working local or remote Portal.
 
 Download the installer and its exact companion `filename.sha256`. Each checksum file contains one record for that installer only. On Linux run `sha256sum -c filename.sha256`; on Windows compare `Get-FileHash filename -Algorithm SHA256` with that record.
@@ -40,4 +40,4 @@ Windows maintenance and uninstall use the registered application directory, incl
 
 ## Chinese and English
 
-Use **中文 / English** at the upper right of Input settings and Portal administration, including Portal's first-time setup page. The initial choice follows the browser/system language. Each product remembers its own selection in that browser; switching updates the page without reloading or losing unsaved fields. Titles, hotwords, credentials, recognized text, and calibration passages are data and retain their original content.
+Use the **中文 / English** dropdown at the upper right of Input settings and Portal administration, including Portal's first-time setup page. The initial choice follows the browser/system language. Each product remembers its own selection in that browser; switching updates the page without reloading or losing unsaved fields. Titles, hotwords, credentials, recognized text, and calibration passages are data and retain their original content.

@@ -34,6 +34,8 @@ Select additional core, UI, native, or package scenarios for the change. Conditi
 
 ## Pinned builds
 
+Build caching preserves `.cache/build/portable/<arch>/` native compilation state and the frozen runtime. A runtime is reused only when code/assets, build recipe, version, immutable container image, Python/CPU and every cached payload hash/mode match; documentation-only edits still produce new packages/provenance without refreezing unchanged code. Unified DEBs merge adapter staging directories and compress only the final package. Windows keeps verified resolved wheels under `.cache/windows/wheels/` and installs with `--no-index`; the key includes requirements and target Python/architecture. Delete that wheelhouse explicitly to refresh ranged dependencies, not during routine cleanup. Keep downloads and toolchains; disposable DEB staging is automatically removed.
+
 ```bash
 python scripts/build.py --platform linux --arch amd64
 python scripts/build.py --platform linux --arch arm64
@@ -55,7 +57,7 @@ Public package filenames are `OpenASRInput_<version>_<os>_<architecture>.<extens
 
 For a docs-only preview, create `test-results/`, then run `python scripts/release.py --docs test-results/product-docs.zip`. All authored Markdown, images, and linked attachments retain their original bytes and relative paths. Flat releases include `release.md` / `release.zh-CN.md` beside identical README copies to keep language links valid.
 
-VERSION and tool metadata are **1.1.0**. Candidates go to `.cache/build/artifacts/<os>/<arch>/<variant>/`; `scripts/release.py` publishes successful candidates to `release/1.1.0/`, never dist/. The version directory contains flat packages, complete docs ZIP, bilingual READMEs, manifest, and SHA256SUMS.
+VERSION and tool metadata are **1.1.1**. Candidates go to `.cache/build/artifacts/<os>/<arch>/<variant>/`; `scripts/release.py` publishes successful candidates to `release/1.1.1/`, never dist/. The version directory contains flat packages, complete docs ZIP, bilingual READMEs, manifest, and SHA256SUMS.
 
 The publisher checks version, architecture, unique candidates, and hashes. Other platforms merge only with matching source provenance. Old receipts cannot establish new candidates after source/docs changes; rebuild relevant targets. Record builds and platform acceptance separately.
 

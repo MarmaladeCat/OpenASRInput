@@ -28,14 +28,14 @@ def build_unified(output, native_build=None, runtime_dir=None):
         dependencies = set()
         optional = set()
         for framework in ("fcitx4", "fcitx5"):
-            package = build(
+            extracted = root / (framework + "-stage")
+            build(
                 root / framework,
                 framework,
                 (native_build or ROOT / "build") / framework,
                 runtime_dir,
+                stage_destination=extracted,
             )
-            extracted = root / (framework + "-stage")
-            subprocess.run(["dpkg-deb", "-R", str(package), str(extracted)], check=True)
             control = (extracted / "DEBIAN/control").read_text()
             depends = next(
                 line[9:] for line in control.splitlines() if line.startswith("Depends: ")
@@ -116,14 +116,16 @@ def build_unified(output, native_build=None, runtime_dir=None):
             lines.append(line)
         lines.append("Suggests: ibus, " + ", ".join(sorted(optional)))
         (stage / "DEBIAN/control").write_text("\n".join(lines) + "\n")
-        package = output / package.name
+        architecture = next(line.split(": ", 1)[1] for line in control.splitlines()
+                            if line.startswith("Architecture: "))
+        package = output / f"openasrinput_{VERSION}_{architecture}.deb"
         subprocess.run(
             ["dpkg-deb", "--root-owner-group", "--build", str(stage), str(package)], check=True
         )
     return package
 
 
-def build(output, framework="auto", native_build=None, runtime_dir=None):
+def build(output, framework="auto", native_build=None, runtime_dir=None, *, stage_destination=None):
     if framework == "auto":
         return build_unified(output, native_build, runtime_dir)
     output.mkdir(parents=True, exist_ok=True)
@@ -295,6 +297,10 @@ def build(output, framework="auto", native_build=None, runtime_dir=None):
             " Configure a remote or local OpenASRPortal and its dedicated ASR access key.\n"
         )
         package = output / f"openasrinput_{VERSION}_{architecture}.deb"
+        if stage_destination is not None:
+            # The unified package consumes staged payloads, not compressed DEBs.
+            shutil.move(str(stage), stage_destination)
+            return stage_destination
         subprocess.run(
             ["dpkg-deb", "--root-owner-group", "--build", str(stage), str(package)], check=True
         )

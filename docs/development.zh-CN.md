@@ -2,6 +2,8 @@
 
 [English](development.md) | **简体中文**
 
+构建缓存保留 `.cache/build/portable/<架构>/` 的原生编译状态及冻结运行时。只有代码/资源、构建配方、版本、不可变容器镜像、Python/CPU 以及缓存文件哈希/权限全部匹配才复用运行时；仅改文档仍重新打包并生成来源记录，但无需重新冻结未变代码。统一 DEB 直接合并适配器暂存目录，只压缩最终包。Windows 在 `.cache/windows/wheels/` 保留已校验的完整依赖轮子，使用 `--no-index` 安装，缓存键包含依赖及目标 Python/架构。需要刷新范围版本依赖时才显式删除该 wheelhouse，日常清理应保留下载和工具链；一次性 DEB 暂存自动删除。
+
 面向源码维护者。普通用户安装见 [使用手册](user-guide.zh-CN.md)，验收标准见 [测试约束](testing.zh-CN.md)。本仓库独立管理环境，不借用 Portal 或工作区的依赖。
 
 ## 源码环境
@@ -55,7 +57,7 @@ Windows 原生打包及测试准备会先明确重编译桥接，再发布生成
 
 单独预览文档时，先创建 `test-results/`，再运行 `python scripts/release.py --docs test-results/product-docs.zip`。全部人工 Markdown、图片和链接附件保留原始字节与相对目录。平铺发行目录在相同内容的 README 副本旁保留 `release.md` / `release.zh-CN.md`，确保语言链接有效。
 
-产品版本与工具元数据由 VERSION 指定为 **1.1.0**。候选包位于 `.cache/build/artifacts/<系统>/<架构>/<变体>/`，成功后由 `scripts/release.py` 发布到 `release/1.1.0/`，不生成产品 dist/。版本目录平铺软件包、完整 docs ZIP、中英文 README、清单与 SHA256SUMS。
+产品版本与工具元数据由 VERSION 指定为 **1.1.1**。候选包位于 `.cache/build/artifacts/<系统>/<架构>/<变体>/`，成功后由 `scripts/release.py` 发布到 `release/1.1.1/`，不生成产品 dist/。版本目录平铺软件包、完整 docs ZIP、中英文 README、清单与 SHA256SUMS。
 
 发布器校验版本、架构、唯一候选和哈希，同源的其他平台包可合并。源码或文档变化后不能拿旧收据证明新候选；应重新构建相应目标。平台验收和构建分开记录。
 

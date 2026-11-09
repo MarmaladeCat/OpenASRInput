@@ -58,7 +58,7 @@ The test creates its own disposable presentation under test-results/ and covers 
 Package check example, after building the matching target:
 
 ```bash
-python tests/test_portable_deb.py .cache/build/artifacts/linux/amd64/auto/openasrinput_1.1.0_amd64.deb
+python tests/test_portable_deb.py .cache/build/artifacts/linux/amd64/auto/openasrinput_1.1.1_amd64.deb
 ```
 
 ## Result rules

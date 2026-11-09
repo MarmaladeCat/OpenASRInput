@@ -1,12 +1,14 @@
-# OpenASRInput 1.1.0 版本说明
+# OpenASRInput 1.1.1 版本说明
 
 [English](release.md) | **简体中文**
 
 Input 需要本机或远程 [OpenASRPortal](https://github.com/MarmaladeCat/OpenASRPortal)。请从 [Portal 下载页](https://github.com/MarmaladeCat/OpenASRPortal/releases) 获取并按照 [配置手册](https://github.com/MarmaladeCat/OpenASRPortal/blob/main/docs/user-guide.zh-CN.md) 设置。Input Release 是合体安装包的计划分发入口；每个安装包配同名 `.sha256`，每份仅含该包的一行校验记录。
 
-## 1.1.0 改进
+## 1.1.1 改进
 
-组合包包含 Input 1.1.0 和独立版本的 Portal 1.1.0，支持百炼/Soniox 真正流式识别、Boson AI Higgs STT，以及每上游独立 HTTP/HTTPS 代理选择。选择 Boson 档案后按语段接收定稿文字，该提供商不返回逐字预览；Input 识别协议仍为 v1。
+设置页改用中英文语言下拉框，切换时保留正在填写的表单。组合包中的 Portal 管理界面新增上游就地编辑、面板内连接测试结果及代理可用性与耗时测试。
+
+组合包包含 Input 1.1.1 和独立版本的 Portal 1.1.1，支持百炼/Soniox 真正流式识别、Boson AI Higgs STT，以及每上游独立 HTTP/HTTPS 代理选择。选择 Boson 档案后按语段接收定稿文字，该提供商不返回逐字预览；Input 识别协议仍为 v1。
 
 Windows x64、Linux amd64/ARM64 合体安装、OpenASR 公共根目录下的私有用户配置、旧配置迁移、安装后按需首次设置，以及右上角中英文切换，详见 [安装说明](installation.zh-CN.md)。
 
@@ -16,7 +18,7 @@ Windows 自定义编辑器输入独立核验可选的值、文本和光标能力
 
 Windows 单独安装在维护与卸载时恢复自定义程序目录。选择卸载并删除配置时，使用已登记的实际安装位置，不再回退到默认程序路径。
 
-本产品版本与包工具元数据统一为 1.1.0，公开识别协议保持 v1。全部文档提供英文默认入口及对应中文链接。
+本产品版本与包工具元数据统一为 1.1.1，公开识别协议保持 v1。全部文档提供英文默认入口及对应中文链接。
 
 ## 本版能力
 
@@ -27,7 +29,7 @@ Windows 单独安装在维护与卸载时恢复自定义程序目录。选择卸
 
 ## 下载与阅读
 
-独立包为 `OpenASRInput_1.1.0_linux_amd64.deb`、`OpenASRInput_1.1.0_linux_arm64.deb` 或 `OpenASRInput_1.1.0_windows_amd64.msi`。组合包追加所含 Portal 的版本：`OpenASRInput_1.1.0_windows_amd64_OpenASRPortal_1.1.0.msi`，或 `OpenASRInput_1.1.0_linux_<架构>_OpenASRPortal_1.1.0.deb`。Linux 合体 DEB 以 `openasrinput-portal` 管理两个应用，安装、替换和卸载交由 APT。安装包自带私有 Python，Linux 仍需对应桌面输入法框架。
+独立包为 `OpenASRInput_1.1.1_linux_amd64.deb`、`OpenASRInput_1.1.1_linux_arm64.deb` 或 `OpenASRInput_1.1.1_windows_amd64.msi`。组合包追加所含 Portal 的版本：`OpenASRInput_1.1.1_windows_amd64_OpenASRPortal_1.1.1.msi`，或 `OpenASRInput_1.1.1_linux_<架构>_OpenASRPortal_1.1.1.deb`。Linux 合体 DEB 以 `openasrinput-portal` 管理两个应用，安装、替换和卸载交由 APT。安装包自带私有 Python，Linux 仍需对应桌面输入法框架。
 
 GitHub Release 附件只保留软件包及每包一个同名 `.sha256`，每份只含一行校验记录。在线阅读[使用手册](user-guide.zh-CN.md)和[安装说明](installation.zh-CN.md)。本地构建目录保留完整文档归档、manifest.json 和 SHA256SUMS；构建清单不代表平台认证。
 

@@ -19,6 +19,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 windows_replacement = runpy.run_path(str(ROOT / "scripts/windows_replacement.py"))
+wheel_cache = runpy.run_path(str(ROOT / "scripts/wheel_cache.py"))
 CACHE = ROOT / ".cache/windows"
 BUILD = ROOT / ".cache/build/windows"
 VERSION = re.search(r'^version\s*=\s*"([^"]+)"', (ROOT / "pyproject.toml").read_text(), re.M).group(
@@ -219,12 +220,18 @@ def python_runtime(payload, version):
     (python / f"python{tag}._pth").write_text(
         f"python{tag}.zip\n.\nLib/site-packages\n../app\nimport site\n"
     )
+    wheels = wheel_cache["wheelhouse"](
+        CACHE / "wheels", ["aiohttp>=3.12,<4"], ".".join(version.split(".")[:2])
+    )
     subprocess.run(
         [
             sys.executable,
             "-m",
             "pip",
             "install",
+            "--no-index",
+            "--find-links",
+            str(wheels),
             "--target",
             str(python / "Lib/site-packages"),
             "--platform",
@@ -235,7 +242,7 @@ def python_runtime(payload, version):
             "--no-compile",
             "--ignore-installed",
             "--no-warn-conflicts",
-            "aiohttp>=3.12,<4",
+            *map(str, sorted(wheels.glob("*.whl"))),
         ],
         check=True,
     )

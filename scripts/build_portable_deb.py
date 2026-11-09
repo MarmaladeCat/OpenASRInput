@@ -45,6 +45,9 @@ def main():
         subprocess.run([*command, "."], cwd=ROOT, check=True)
     build = ROOT / ".cache/build/portable" / args.arch
     build.mkdir(parents=True, exist_ok=True)
+    image_id = subprocess.check_output(
+        ["docker", "image", "inspect", "--format", "{{.Id}}", image], text=True
+    ).strip()
     output = (
         args.output.resolve()
         if args.output
@@ -103,13 +106,15 @@ def main():
                 "HOME=/tmp",
                 "-e",
                 "OPENASRINPUT_BUILD_DIR=/build",
+                "-e",
+                "OPENASR_BUILD_IMAGE=" + image_id,
                 "-v",
                 f"{source}:/source:ro",
                 "-v",
                 f"{build}:/build",
                 "-v",
                 f"{output}:/artifacts",
-                image,
+                image_id,
                 "python",
                 "-c",
                 code,

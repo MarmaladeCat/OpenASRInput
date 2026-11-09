@@ -8,8 +8,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <AssemblyVersion>1.1.0.0</AssemblyVersion>
-    <Version>1.1.0</Version>
+    <AssemblyVersion>1.1.1.0</AssemblyVersion>
+    <Version>1.1.1</Version>
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="bin/**/*.cs;obj/**/*.cs" />

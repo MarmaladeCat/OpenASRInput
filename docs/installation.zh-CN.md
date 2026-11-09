@@ -2,11 +2,11 @@
 
 [English](installation.md) | **简体中文**
 
-本页说明 Input 1.1.0 安装及 Input 1.1.0 + Portal 1.1.0 组合安装包，各组件保持独立产品版本。
+本页说明 Input 1.1.1 安装及 Input 1.1.1 + Portal 1.1.1 组合安装包，各组件保持独立产品版本。
 
 ## 选择安装方式
 
-- **Input + Portal 合体安装**：Windows x64 为一个 MSI；Linux amd64/ARM64 为内置两个应用及私有运行时的单个 DEB，计划放在 [Input Release 下载页](https://github.com/MarmaladeCat/OpenASRInput/releases)。Windows 保持勾选 Portal；Linux 用图形包管理器打开 DEB，或运行 `sudo apt install ./OpenASRInput_1.1.0_linux_amd64_OpenASRPortal_1.1.0.deb`（ARM64 将 `amd64` 换为 `arm64`）。发行版依赖可能需要联网下载。
+- **Input + Portal 合体安装**：Windows x64 为一个 MSI；Linux amd64/ARM64 为内置两个应用及私有运行时的单个 DEB，计划放在 [Input Release 下载页](https://github.com/MarmaladeCat/OpenASRInput/releases)。Windows 保持勾选 Portal；Linux 用图形包管理器打开 DEB，或运行 `sudo apt install ./OpenASRInput_1.1.1_linux_amd64_OpenASRPortal_1.1.1.deb`（ARM64 将 `amd64` 换为 `arm64`）。发行版依赖可能需要联网下载。
 - **仅安装 Input**：已有 Portal 时可使用独立包。[Portal 项目](https://github.com/MarmaladeCat/OpenASRPortal)、[下载页](https://github.com/MarmaladeCat/OpenASRPortal/releases) 和 [配置手册](https://github.com/MarmaladeCat/OpenASRPortal/blob/main/docs/user-guide.zh-CN.md) 说明部署步骤。Input 需要可用的本机或远程 Portal 才能识别。
 
 同时下载安装包及其同名 `文件名.sha256`。每份校验文件只包含对应安装包的一行记录；Linux 执行 `sha256sum -c 文件名.sha256`，Windows 用 `Get-FileHash 文件名 -Algorithm SHA256` 对照该记录。
@@ -40,4 +40,4 @@ Windows 维护与卸载使用登记的实际程序目录，也支持自定义安
 
 ## 中英文切换
 
-Input 设置页、Portal 管理页及首次设置页右上角均有 **中文 / English**。默认跟随浏览器/系统语言，两产品分别记住当前浏览器的选择；切换时不刷新页面，也不丢失未保存表单。用户名称、热词、凭据、识别文本及校准朗读材料属于数据，保留原内容。
+Input 设置页、Portal 管理页及首次设置页右上角均有 **中文 / English** 下拉框。默认跟随浏览器/系统语言，两产品分别记住当前浏览器的选择；切换时不刷新页面，也不丢失未保存表单。用户名称、热词、凭据、识别文本及校准朗读材料属于数据，保留原内容。

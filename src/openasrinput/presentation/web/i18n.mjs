@@ -125,17 +125,15 @@ function select(value, persist = true) {
     }
   }
   document
-    .querySelectorAll('[data-language]')
-    .forEach((button) =>
-      button.setAttribute('aria-pressed', String(button.dataset.language === value))
-    );
+    .querySelectorAll('[data-language-select]')
+    .forEach((control) => { control.value = value; });
   render();
   document.dispatchEvent(new CustomEvent('languagechange', { detail: value }));
 }
 
 document
-  .querySelectorAll('[data-language]')
-  .forEach((button) => button.addEventListener('click', () => select(button.dataset.language)));
+  .querySelectorAll('[data-language-select]')
+  .forEach((control) => control.addEventListener('change', () => select(control.value)));
 window.addEventListener('storage', (event) => {
   if (event.key === storageKey && event.newValue) select(event.newValue, false);
 });

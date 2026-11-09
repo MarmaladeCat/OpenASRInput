@@ -4,7 +4,9 @@ const path = require('node:path');
 
 async function language(window, value) {
   await window.webContents.executeJavaScript(`import('/i18n.mjs').then(() => {
-    document.querySelector('[data-language="${value}"]').click();
+    const control = document.querySelector('[data-language-select]');
+    control.value = '${value}';
+    control.dispatchEvent(new Event('change'));
     return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   })`);
 }

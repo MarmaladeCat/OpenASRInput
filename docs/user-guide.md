@@ -2,7 +2,7 @@
 
 **English** | [简体中文](user-guide.zh-CN.md)
 
-Version **1.1.0**. This guide covers first installation, daily dictation, selection editing, multiple services, and recovery. See [API](API.md) for integration and [development](development.md) for source builds. Licensed under [GPL v3](../LICENSE). English descriptions below retain key Chinese button labels where useful for locating controls in the current UI.
+Version **1.1.1**. This guide covers first installation, daily dictation, selection editing, multiple services, and recovery. See [API](API.md) for integration and [development](development.md) for source builds. Licensed under [GPL v3](../LICENSE). English descriptions below retain key Chinese button labels where useful for locating controls in the current UI.
 
 ## 1. Logical architecture
 
@@ -39,14 +39,14 @@ Windows uses x64 MSI; Debian/Ubuntu Linux uses amd64 or ARM64 deb. `amd64` means
 Download the matching file and its exact `filename.sha256` companion. Each checksum file contains one installer record. Linux can run `sha256sum -c filename.sha256` in the download directory. On Windows:
 
 ```powershell
-Get-FileHash .\OpenASRInput_1.1.0_windows_amd64.msi -Algorithm SHA256
+Get-FileHash .\OpenASRInput_1.1.1_windows_amd64.msi -Algorithm SHA256
 ```
 
 Compare the result with the matching `.sha256` file. Read the bilingual guides and illustrations in this repository.
 
 ### 2.2 Windows installation and first run
 
-1. Run `OpenASRInput_1.1.0_windows_amd64.msi` and complete the wizard.
+1. Run `OpenASRInput_1.1.1_windows_amd64.msi` and complete the wizard.
 2. Open OpenASRInput settings from Start. Standalone Input MSI does not include Portal; use your administrator's address for an existing remote Portal.
 3. In Windows Settings → Privacy & security → Microphone, permit desktop apps and confirm the device is not muted in Sound settings.
 4. Check the Portal card, microphone, and native bridge as described below.
@@ -61,7 +61,7 @@ Real settings service extracted from the 1.0.0 MSI on Windows 11 amd64, using te
 In the download directory (substitute the ARM64 file when appropriate):
 
 ```bash
-sudo apt install ./OpenASRInput_1.1.0_linux_amd64.deb
+sudo apt install ./OpenASRInput_1.1.1_linux_amd64.deb
 openasrinput settings
 ```
 
