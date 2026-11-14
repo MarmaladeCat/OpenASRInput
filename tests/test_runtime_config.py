@@ -96,11 +96,14 @@ class RuntimeConfigTests(unittest.IsolatedAsyncioTestCase):
                 self.store.read()[1],
             )
             await self.runtime.tick(
-                SimpleNamespace(core=SimpleNamespace(state="listening", error=""))
+                SimpleNamespace(core=SimpleNamespace(state="listening", error="",
+                                                     preview_phase="after_audio_end", recording_limit=60))
             )
             self.assertEqual(self.bridge.panel_settings["theme"], "nord")
             self.assertEqual(self.bridge.panel_settings["colorMode"], "dark")
             self.assertTrue(self.store.status()["pendingConnection"])
+            self.assertEqual(self.store.status()["previewPhase"], "after_audio_end")
+            self.assertEqual(self.store.status()["recordingLimitMs"], 60000)
             self.assertEqual(original.capture_factory().device, "first-device")
             self.assertEqual(original.gain, 1)
             self.assertEqual(original.portal.connection[1], "first-key")
@@ -111,10 +114,11 @@ class RuntimeConfigTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(updated.gain, 2)
 
     async def test_invalid_external_edit_keeps_the_last_working_appearance(self):
-        await self.runtime.tick(SimpleNamespace(core=SimpleNamespace(state="idle", error="")))
+        daemon = SimpleNamespace(core=Controller(self.bridge))
+        await self.runtime.tick(daemon)
         self.store.path.write_text("broken")
         self.runtime.next_poll = 0
-        await self.runtime.tick(SimpleNamespace(core=SimpleNamespace(state="idle", error="")))
+        await self.runtime.tick(daemon)
         self.assertEqual(self.bridge.panel_settings["theme"], "material")
         self.assertIn("JSON", self.store.status()["error"])
 

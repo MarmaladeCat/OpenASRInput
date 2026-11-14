@@ -11,7 +11,12 @@ const temporary = fs.mkdtempSync(path.join(root, 'test-results', 'settings-ui-')
 app.setPath('userData', path.join(temporary, 'browser'));
 app.disableHardwareAcceleration();
 app.commandLine.appendSwitch('ozone-platform', 'x11');
+app.on('window-all-closed', () => {});
 let window, python, portal;
+const watchdog = setTimeout(() => {
+  console.error('Settings UI journey did not reach its final assertion');
+  finish(1);
+}, 90000);
 const calls = [];
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const js = (expression) => window.webContents.executeJavaScript(expression);
@@ -141,7 +146,15 @@ async function run() {
               id: 'cloud',
               title: '云端实时识别',
               provider: 'doubao',
-              capabilities: { latencyClass: 'streaming' }
+              capabilities: { latencyClass: 'streaming', recognition: { preview: { phase: 'during_capture' } } }
+            },
+            {
+              id: 'file', title: '文件识别', provider: 'openlocalasr_file',
+              capabilities: { recognition: { preview: { phase: 'none' } }, limits: { maxRecordingMs: 60000 } }
+            },
+            {
+              id: 'sse', title: '文件 SSE', provider: 'openai_file',
+              capabilities: { partialResults: true, recognition: { preview: { phase: 'after_audio_end' } } }
             }
           ]
         })
@@ -217,6 +230,7 @@ async function run() {
   assert.equal(await js('document.querySelectorAll("#settings-nav [role=tab]").length'), 7);
   assert.equal(await js('document.getElementById("theme").value'), 'material');
   assert.equal(await js('document.getElementById("scale").value'), '1');
+  assert.equal(await js('document.getElementById("settings-timeout").value'), '20');
   await screenshot('settings-appearance.png');
   await field('theme', 'nord');
   await field('color-mode', 'dark');
@@ -310,7 +324,7 @@ async function run() {
   assert.equal(await js('document.getElementById("page-text-edit").hidden'), true);
   assert.equal(await js('document.querySelector("#model-card-list [name=apiKey]").value'), '');
   await js('document.getElementById("portal-test").click()');
-  await wait('document.getElementById("profile-list").children.length === 3');
+  await wait('document.getElementById("profile-list").children.length === 5');
   assert.equal(await js('document.getElementById("profile-id")'), null);
   assert.match(
     await js('document.querySelector("#profile-list .profile-card").textContent'),
@@ -318,6 +332,13 @@ async function run() {
   );
   assert.equal(JSON.parse(fs.readFileSync(config)).portal.apiKey, '');
   assert.deepEqual(calls, ['/v1/capabilities', '/v1/profiles']);
+  const profilesText = await js('document.getElementById("profile-list").textContent');
+  for (const text of ['预览时机未知', '录音中预览', '停止后识别', '停止后逐步出字'])
+    assert.ok(profilesText.includes(text), text);
+  await require('./language_ui.cjs').language(window, 'en');
+  assert.ok(await js('document.getElementById("profile-list").textContent.includes("Preview timing unknown")'));
+  assert.ok(await js('document.getElementById("profile-list").textContent.includes("Incremental text after stopping")'));
+  await require('./language_ui.cjs').language(window, 'zh-CN');
   await js('document.querySelectorAll("#profile-list .profile-card button")[2].click()');
   await js('document.getElementById("save").click()');
   await wait(
@@ -336,6 +357,15 @@ async function run() {
   const saved = JSON.parse(fs.readFileSync(config));
   assert.equal(saved.portal.apiKey, 'test-secret');
   assert.equal(saved.portal.profileId, 'cloud');
+  const statusPath = config.replace(/\.json$/, '.runtime.json');
+  fs.writeFileSync(statusPath, JSON.stringify({updatedAt: Date.now() / 1000,
+    running: true, state: 'listening', previewPhase: 'none', recordingLimitMs: 60000}));
+  await wait('document.getElementById("runtime-status").textContent.includes("录音上限 60 秒")');
+  assert.ok(await js('document.getElementById("runtime-status").textContent.includes("停止后识别")'));
+  await require('./language_ui.cjs').language(window, 'en');
+  assert.ok(await js('document.getElementById("runtime-status").textContent.includes("Recording limit: 60 s")'));
+  fs.rmSync(statusPath);
+  await require('./language_ui.cjs').language(window, 'zh-CN');
   assert.equal(saved.textEdit.apiKey, 'text-fixture-secret');
   assert.equal(await js('document.querySelector("#model-card-list [name=apiKey]").value'), '');
   if (process.platform !== 'win32') assert.equal(fs.statSync(config).mode & 0o777, 0o600);
@@ -511,8 +541,50 @@ async function run() {
   );
   assert.equal(JSON.parse(fs.readFileSync(config)).portal.apiKey, '');
   assert.deepEqual(rendererErrors, []);
+  await js('document.getElementById("tab-appearance").click()');
+  await field('settings-timeout', '0');
+  await js('document.getElementById("save").click()');
+  await wait('document.getElementById("dirty-indicator").hidden && !document.getElementById("save").disabled');
+  assert.equal(JSON.parse(fs.readFileSync(config)).settings.timeoutMinutes, 0);
+  await wait('document.getElementById("settings-session-deadline").textContent === "不限时"');
+  await js(`globalThis.realNow = Date.now; Date.now = () => realNow() + 86400000;
+    window.dispatchEvent(new Event('focus'));`);
+  assert.equal(await js('document.getElementById("settings-expired").hidden'), true);
+  await js('Date.now = realNow; undefined');
+  await field('settings-timeout', '1');
+  await js('document.getElementById("save").click()');
+  await wait('document.getElementById("dirty-indicator").hidden && !document.getElementById("save").disabled');
+  const sessionInfo = () => js(`fetch('/api/settings/session', {headers: {
+    Authorization: 'Bearer ' + sessionStorage.getItem('openasrinput-settings-token')
+  }}).then(r => r.json())`);
+  const beforeReload = await sessionInfo();
+  const reloaded = new Promise((resolve) => window.webContents.once('did-finish-load', resolve));
+  window.webContents.reload();
+  await reloaded;
+  await wait('document.getElementById("feedback")?.textContent === "设置已载入。"');
+  assert.deepEqual(await sessionInfo(), beforeReload);
+  await field('settings-timeout', '2'); // Unsaved changes must not extend or block expiry.
+  await js(`window.close = () => { globalThis.closeAttempted = true; };
+    globalThis.realNow = Date.now; Date.now = () => realNow() + 61000;
+    document.dispatchEvent(new Event('visibilitychange'));`);
+  await wait('!document.getElementById("settings-expired").hidden');
+  assert.equal(await js('globalThis.closeAttempted'), true);
+  assert.equal(await js('sessionStorage.getItem("openasrinput-settings-token")'), null);
+  assert.equal(await js('document.querySelector(".settings-layout").inert'), true);
+  assert.equal(await js('document.querySelector("footer").hidden'), true);
+  assert.equal(await js('window.dispatchEvent(new Event("beforeunload", {cancelable: true}))'), true);
+  await screenshot('settings-expired.png');
+  // The real settings command uses a fresh launch query, even if the browser reuses a tab.
+  // A fragment-only navigation would keep the expired document and its mocked clock.
+  const reopened = new URL(settings.settingsUrl);
+  reopened.searchParams.set('launch', 'reopen-settings-test');
+  await window.loadURL(reopened.href);
+  await wait('document.getElementById("feedback")?.textContent === "设置已载入。"');
+  assert.equal(await js('document.getElementById("settings-timeout").value'), '1');
+  assert.notDeepEqual(await sessionInfo(), beforeReload);
+  assert.deepEqual(rendererErrors, []);
   console.log(
-    'PASS settings UI: navigation, theme preview, save/reload, Portal profiles, secret retention, audio gain, personal hotword query/add/save'
+    'PASS settings UI: navigation, themes, save/reload, Portal profiles, secrets, audio, hotwords; session default/zero/change/reload/expiry/reopen'
   );
 }
 
@@ -523,6 +595,7 @@ run()
     finish(1);
   });
 async function finish(code) {
+  clearTimeout(watchdog);
   if (window && !window.isDestroyed()) window.destroy();
   if (python && python.exitCode === null) {
     python.kill('SIGINT');

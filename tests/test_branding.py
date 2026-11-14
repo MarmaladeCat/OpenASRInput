@@ -8,6 +8,7 @@ from pathlib import Path
 
 from aiohttp.test_utils import AioHTTPTestCase
 
+from openasrinput.infrastructure.config import ConfigStore
 from openasrinput.presentation.settings_server import BRANDING, SettingsServer
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,7 +16,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class BrandingHTTPTests(AioHTTPTestCase):
     async def get_application(self):
-        return SettingsServer().app()
+        temporary = tempfile.TemporaryDirectory(dir=ROOT / "test-results")
+        self.addCleanup(temporary.cleanup)
+        return SettingsServer(ConfigStore(Path(temporary.name) / "input.json")).app()
 
     async def test_logo_is_public_local_and_csp_compatible(self):
         response = await self.client.get("/branding/logo.svg")

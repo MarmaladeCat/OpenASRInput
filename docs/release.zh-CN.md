@@ -1,14 +1,20 @@
-# OpenASRInput 1.1.1 版本说明
+# OpenASRInput 1.2.0 版本说明
 
 [English](release.md) | **简体中文**
 
+ready 等待覆盖 Portal 排队和初始化预算，预录缓存有界为 60 秒。各启动方式使用同一 OpenASR 身份数据目录，包启用状态与配置放在一起。
+
 Input 需要本机或远程 [OpenASRPortal](https://github.com/MarmaladeCat/OpenASRPortal)。请从 [Portal 下载页](https://github.com/MarmaladeCat/OpenASRPortal/releases) 获取并按照 [配置手册](https://github.com/MarmaladeCat/OpenASRPortal/blob/main/docs/user-guide.zh-CN.md) 设置。Input Release 是合体安装包的计划分发入口；每个安装包配同名 `.sha256`，每份仅含该包的一行校验记录。
 
-## 1.1.1 改进
+## 1.2.0 改进
+
+录音轮次使用 295 秒与协商档案上限的较小值，包括 Portal 就绪前采集和停止尾帧。核对创建／ready 快照，超限预缓存在上传前拒绝。收尾会更新已等待中的 receive 截止时间。设置显示真实预览时机和当前录音上限，有序公共 final 仍只提交原生目标一次。
+
+本地设置页采用独立且由服务端校验的有效期：默认 20 分钟，可在外观页修改，0 表示不限时。刷新不续期。到期后浏览器允许则关闭标签页，否则显示不可操作的过期提示；重新打开设置会创建新会话，不停止听写。
 
 设置页改用中英文语言下拉框，切换时保留正在填写的表单。组合包中的 Portal 管理界面新增上游就地编辑、面板内连接测试结果及代理可用性与耗时测试。
 
-组合包包含 Input 1.1.1 和独立版本的 Portal 1.1.1，支持百炼/Soniox 真正流式识别、Boson AI Higgs STT，以及每上游独立 HTTP/HTTPS 代理选择。选择 Boson 档案后按语段接收定稿文字，该提供商不返回逐字预览；Input 识别协议仍为 v1。
+组合包包含 Input 1.2.0 和独立版本的 Portal 1.2.0，支持百炼/Soniox 真正流式识别、Boson AI Higgs STT，以及每上游独立 HTTP/HTTPS 代理选择。选择 Boson 档案后按语段接收定稿文字，该提供商不返回逐字预览；Input 识别协议仍为 v1。
 
 Windows x64、Linux amd64/ARM64 合体安装、OpenASR 公共根目录下的私有用户配置、旧配置迁移、安装后按需首次设置，以及右上角中英文切换，详见 [安装说明](installation.zh-CN.md)。
 
@@ -18,7 +24,7 @@ Windows 自定义编辑器输入独立核验可选的值、文本和光标能力
 
 Windows 单独安装在维护与卸载时恢复自定义程序目录。选择卸载并删除配置时，使用已登记的实际安装位置，不再回退到默认程序路径。
 
-本产品版本与包工具元数据统一为 1.1.1，公开识别协议保持 v1。全部文档提供英文默认入口及对应中文链接。
+本产品版本与包工具元数据统一为 1.2.0，公开识别协议保持 v1。全部文档提供英文默认入口及对应中文链接。
 
 ## 本版能力
 
@@ -29,7 +35,7 @@ Windows 单独安装在维护与卸载时恢复自定义程序目录。选择卸
 
 ## 下载与阅读
 
-独立包为 `OpenASRInput_1.1.1_linux_amd64.deb`、`OpenASRInput_1.1.1_linux_arm64.deb` 或 `OpenASRInput_1.1.1_windows_amd64.msi`。组合包追加所含 Portal 的版本：`OpenASRInput_1.1.1_windows_amd64_OpenASRPortal_1.1.1.msi`，或 `OpenASRInput_1.1.1_linux_<架构>_OpenASRPortal_1.1.1.deb`。Linux 合体 DEB 以 `openasrinput-portal` 管理两个应用，安装、替换和卸载交由 APT。安装包自带私有 Python，Linux 仍需对应桌面输入法框架。
+独立包为 `OpenASRInput_1.2.0_linux_amd64.deb`、`OpenASRInput_1.2.0_linux_arm64.deb` 或 `OpenASRInput_1.2.0_windows_amd64.msi`。组合包追加所含 Portal 的版本：`OpenASRInput_1.2.0_windows_amd64_OpenASRPortal_1.2.0.msi`，或 `OpenASRInput_1.2.0_linux_<架构>_OpenASRPortal_1.2.0.deb`。Linux 合体 DEB 以 `openasrinput-portal` 管理两个应用，安装、替换和卸载交由 APT。安装包自带私有 Python，Linux 仍需对应桌面输入法框架。
 
 GitHub Release 附件只保留软件包及每包一个同名 `.sha256`，每份只含一行校验记录。在线阅读[使用手册](user-guide.zh-CN.md)和[安装说明](installation.zh-CN.md)。本地构建目录保留完整文档归档、manifest.json 和 SHA256SUMS；构建清单不代表平台认证。
 
@@ -37,6 +43,6 @@ GitHub Release 附件只保留软件包及每包一个同名 `.sha256`，每份�
 
 Fcitx4 仅用于 X11；Wayland 按桌面和框架单独验收。不同应用的原生输入能力可能不同。demo 不向真实应用上屏。升级前退出应用、备份本地配置，保留已有 Portal Key；旧活动会话不续传。
 
-Windows 设置页存在 Alt+Z 旧提示，实际原生快捷键为 Alt+X，使用手册按实现说明。
+Linux Alt+Z / Windows Alt+X 在无选区或不支持选区读取时退回普通听写；可选 UIA 查询失败不再阻止有效编辑目标。设置页明确两个平台的快捷键。普通听写清除中文 `。！？` 后填充空格，保留英文词间空格和换行。见[可选万象完整包与清理说明](installation.zh-CN.md)。
 
 尚未验证的系统、原生目标、安装升级和真实录音须在交付验收中列明。后续版本在此按版本记录用户可见变化和兼容要求，不加入日常开发日志。

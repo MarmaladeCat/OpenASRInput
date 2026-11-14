@@ -25,6 +25,8 @@ Linux 原生编译需要对应输入法开发库；Windows 桥接需要 .NET/C++
 
 ## 修改与检查
 
+通过 `domain/session_contract.py` 消费识别能力与有效限制，传输和控制器一致使用创建／ready 快照。录音时钟和样本预算包括 ready 前采集及停止尾包。公共 final 构成不可变有序前缀，不得靠原生重放或回滚修补上游顺序。见 [API 语义](API.zh-CN.md)。
+
 ```bash
 python scripts/test.py setup --suite unit
 python scripts/test.py run --suite unit --allow-skips
@@ -57,7 +59,7 @@ Windows 原生打包及测试准备会先明确重编译桥接，再发布生成
 
 单独预览文档时，先创建 `test-results/`，再运行 `python scripts/release.py --docs test-results/product-docs.zip`。全部人工 Markdown、图片和链接附件保留原始字节与相对目录。平铺发行目录在相同内容的 README 副本旁保留 `release.md` / `release.zh-CN.md`，确保语言链接有效。
 
-产品版本与工具元数据由 VERSION 指定为 **1.1.1**。候选包位于 `.cache/build/artifacts/<系统>/<架构>/<变体>/`，成功后由 `scripts/release.py` 发布到 `release/1.1.1/`，不生成产品 dist/。版本目录平铺软件包、完整 docs ZIP、中英文 README、清单与 SHA256SUMS。
+产品版本与工具元数据由 VERSION 指定为 **1.2.0**。候选包位于 `.cache/build/artifacts/<系统>/<架构>/<变体>/`，成功后由 `scripts/release.py` 发布到 `release/1.2.0/`，不生成产品 dist/。版本目录平铺软件包、完整 docs ZIP、中英文 README、清单与 SHA256SUMS。
 
 发布器校验版本、架构、唯一候选和哈希，同源的其他平台包可合并。源码或文档变化后不能拿旧收据证明新候选；应重新构建相应目标。平台验收和构建分开记录。
 

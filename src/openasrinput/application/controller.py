@@ -9,8 +9,12 @@ from dataclasses import dataclass
 from uuid import uuid4
 
 from ..domain.bridge import Bridge, CursorFrame, Lease
+from ..domain.dictation_text import dictation_text
 from ..domain.ledger import Ledger, ProtocolError
+from ..domain.session_contract import preview_phase, recording_limit_ms
 from ..domain.waveform import Waveform
+
+RECORDING_LIMIT_SECONDS = 295
 
 
 @dataclass
@@ -51,6 +55,9 @@ class Controller:
         self.finalize_timeout = 0.0
         self.deadline: float | None = None
         self.recording_deadline: float | None = None
+        self.recording_started_at: float | None = None
+        self.recording_limit = RECORDING_LIMIT_SECONDS
+        self.preview_phase = "unknown"
         self.error = ""
         self.waveform = Waveform()
         self.cursor_revision = 0
@@ -64,6 +71,7 @@ class Controller:
         self.selected_text = ""
         self.instruction_parts = []
         self.edit_complete = False
+        self.dictation_tail = ""
 
     def trace(self, cause):
         self.transitions.append(
@@ -101,14 +109,20 @@ class Controller:
             self.pause_requested = self.resume_requested = False
             self.deadline = None
             self.recording_deadline = None
+            self.recording_started_at = None
+            self.recording_limit = RECORDING_LIMIT_SECONDS
+            self.preview_phase = "unknown"
             self.state = "connecting"
             self.mode = "dictation"
             self.selected_text = ""
             self.instruction_parts = []
             self.edit_complete = False
+            self.dictation_tail = ""
             if command:
                 try:
                     self.selected_text = self.bridge.selection(lease)
+                    if not self.bridge.valid(lease):
+                        raise ValueError("输入目标已变化，未开始录音")
                     if len(self.selected_text) > 16000:
                         raise ValueError("选区超过 16000 字符，请缩小选区")
                     if self.selected_text:
@@ -119,6 +133,7 @@ class Controller:
             self._emit("session.create")
         elif self.state == "connecting":
             self.pause_requested = True
+            self.recording_deadline = None
             self.stop_reason = reason
             self._emit("audio.stop-flush")
         elif self.state == "listening":
@@ -143,6 +158,30 @@ class Controller:
         self._emit("audio.stop-flush")
         self._emit("audio.end")
         self.deadline = self.clock() + self.finalize_timeout
+
+    def recording_started(self, generation):
+        if (generation == self.generation and self.state in {"connecting", "listening"}
+                and not self.pause_requested and self.recording_deadline is None):
+            if self.recording_started_at is None:
+                self.recording_started_at = self.clock()
+            self.recording_deadline = self.recording_started_at + self.recording_limit
+
+    def session_limits(self, generation, snapshot, *, enforce=True):
+        if generation != self.generation:
+            return
+        self.recording_limit = min(RECORDING_LIMIT_SECONDS, recording_limit_ms(snapshot) / 1000)
+        self.preview_phase = preview_phase(snapshot)
+        if self.recording_deadline is not None:
+            self.recording_deadline = self.recording_started_at + self.recording_limit
+            if enforce and self.clock() >= self.recording_deadline:
+                self.limit_recording(generation)
+
+    def limit_recording(self, generation):
+        if (generation == self.generation and self.state in {"connecting", "listening"}
+                and not self.pause_requested):
+            self.recording_deadline = None
+            self.error = "即将达到录音时限，已自动暂停；按快捷键可恢复"
+            self.toggle("recording-limit")
 
     def _finish(self):
         if self.mode == "edit" and not self.edit_complete:
@@ -205,14 +244,22 @@ class Controller:
             return
         kind = event["type"]
         if kind == "session.ready":
+            try:
+                self.session_limits(generation, event, enforce=False)
+            except ProtocolError as error:
+                self.fail(str(error))
+                return
             self.finalize_timeout = event["finalizeTimeoutMs"] / 1000
             if self.pause_requested or not self.bridge.valid(self.lease):
                 self._pause(self.stop_reason or "context-lost")
             else:
                 self.state = "listening"
-                # First release pauses before Portal's documented five-minute cap.
-                self.recording_deadline = self.clock() + 295
-                self._emit("audio.start")
+                # Capture can precede ready; never restart its clock here.
+                self.recording_started(generation)
+                if self.clock() >= self.recording_deadline:
+                    self.limit_recording(generation)
+                else:
+                    self._emit("audio.start")
             self.trace("session.ready")
         elif kind == "transcript.final":
             if self.mode == "edit":
@@ -220,6 +267,9 @@ class Controller:
                 if sum(map(len, self.instruction_parts)) > 4000:
                     self.fail("修改指令过长，未修改原文")
                 return
+            text = dictation_text(event["text"], self.dictation_tail)
+            if text:
+                self.dictation_tail = text[-1]
             self.submissions.append(
                 Submission(
                     self.activity_id,
@@ -229,7 +279,7 @@ class Controller:
                     event["revision"],
                     self.lease,
                     str(uuid4()),
-                    event["text"],
+                    text,
                 )
             )
             # No bridge calls from network callbacks. drain() is scheduled by the host.
@@ -303,6 +353,8 @@ class Controller:
         preview = self.ledger.preview if self.ledger else ""
         if self.mode == "edit":
             preview = "".join(self.instruction_parts) + preview
+        else:
+            preview = dictation_text(preview, self.dictation_tail)
         frame = CursorFrame(
             "edit-" + self.state if self.mode == "edit" else self.state, preview, self.waveform.bars
         )
@@ -354,6 +406,7 @@ class Controller:
                 self._pause("context-lost")
             elif self.state == "connecting":
                 self.pause_requested = True
+                self.recording_deadline = None
                 self.stop_reason = "context-lost"
                 self.trace("context-lost")
                 self._emit("audio.stop-flush")
@@ -415,7 +468,6 @@ class Controller:
         ):
             self.context_changed()
         if self.recording_deadline is not None and self.clock() >= self.recording_deadline:
-            self.error = "即将达到录音时限，已自动暂停；按快捷键可恢复"
-            self._pause("recording-limit")
+            self.limit_recording(self.generation)
         if self.deadline is not None and self.clock() >= self.deadline:
             self.fail("FINALIZATION_TIMEOUT")

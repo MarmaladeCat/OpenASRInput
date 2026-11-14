@@ -2,6 +2,7 @@
 
 import json
 import os
+import shutil
 import subprocess
 import time
 import webbrowser
@@ -18,12 +19,20 @@ class PackageDesktop:
     def __init__(self):
         self.home = Path.home()
         self.config_dir = Path(os.environ.get("XDG_CONFIG_HOME", self.home / ".config"))
-        self.state = (
-            Path(os.environ.get("XDG_STATE_HOME", self.home / ".local/state"))
-            / "openasrinput/package"
-        )
-        self.files = FileTransaction(self.state)
         self.store = ConfigStore()
+        self.state = self.store.path.parent / "package"
+        legacy = Path(os.environ.get("XDG_STATE_HOME", self.home / ".local/state")) / "openasrinput/package"
+        if not os.environ.get("OPENASRINPUT_CONFIG") and not self.state.exists() and legacy.is_dir():
+            if legacy.is_symlink() or any(p.is_symlink() for p in legacy.rglob("*")):
+                raise ValueError("Legacy package state must not contain symlinks")
+            import tempfile
+
+            self.state.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            with tempfile.TemporaryDirectory(prefix=".package-migrate-", dir=self.state.parent) as temp:
+                staged = Path(temp) / "package"
+                shutil.copytree(legacy, staged)
+                staged.rename(self.state)
+        self.files = FileTransaction(self.state)
         self.units = self.config_dir / "systemd/user"
         self.launcher = os.environ.get("OPENASRINPUT_PACKAGE_LAUNCHER", "/usr/bin/openasrinput")
         self.framework = os.environ.get("OPENASRINPUT_FRAMEWORK", "auto")

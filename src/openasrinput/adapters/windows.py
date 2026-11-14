@@ -143,8 +143,12 @@ class WindowsBridge:
 
     def selection(self, lease):
         value = self.request("SELECTION", lease.lease_id)
-        if value in {"unsupported", "stale"}:
-            raise ValueError("当前应用无法可靠读取选区，请换用支持选区的编辑器")
+        if value == "unsupported":
+            return ""
+        if value == "stale":
+            raise ValueError("选区已变化，未开始文本修改")
+        if value == "too-large":
+            raise ValueError("选区超过 16000 字符，请缩小选区")
         return bytes.fromhex(value).decode("utf-8")
 
     def submit(self, lease, commit_id, text):

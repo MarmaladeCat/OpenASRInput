@@ -20,6 +20,17 @@ export const messages = {
   '分别设置页面与输入面板的主题，调整输入面板的位置和透明度。':
     'Choose separate themes for settings and the input panel, and adjust the panel position and opacity.',
   设置页面主题: 'Settings page theme',
+  '页面有效期（分钟）': 'Page lifetime (minutes)',
+  '默认 20 分钟，0 表示不限时。修改有效期并保存后，本页重新计时；刷新和普通操作不会续期。到期关闭页面，未保存的修改会丢失。':
+    'Default: 20 minutes; 0 means no expiry. Saving a changed lifetime restarts this page’s timer. Reloading and ordinary activity do not extend it. The page closes at expiry; unsaved changes are lost.',
+  '本页到期时间：': 'This page expires at: ',
+  不限时: 'No expiry',
+  设置页面已过期: 'Settings page expired',
+  '浏览器未自动关闭时，可手动关闭此标签页。重新执行 openasrinput settings 打开新的设置会话。':
+    'If the browser did not close this tab automatically, close it manually. Run openasrinput settings again to open a new settings session.',
+  '请通过 settings 命令重新打开设置': 'Run the settings command to open a new session.',
+  '设置页面有效期（分钟）必须在 0–525600 之间': 'Page lifetime must be between 0 and 525600 minutes.',
+  '设置页面有效期（分钟）必须是整数': 'Page lifetime must be a whole number of minutes.',
   主题: 'Theme',
   'Nord · 冰川蓝': 'Nord',
   'Rosé Pine · 松木玫瑰': 'Rosé Pine',
@@ -163,10 +174,10 @@ export const messages = {
   新增模型卡: 'Add a model card',
   '选择来源 → 配置地址和 Key → 刷新并选择模型，或手填兼容模型名称 → 保存。完整配置后才会加入上方列表。':
     'Select a provider → enter address and key → refresh and select a model, or enter a compatible model name → save. A complete card is then added above.',
-  '选中文本后按 Alt+Z，说出“翻译为英文”等指令，再按快捷键或 Enter 结束。指令只显示在面板，模型完成后替换原选区。Esc 取消；目标或选区变化时不替换。':
+  '选中文本后按 Linux Alt+Z / Windows Alt+X，说出“翻译为英文”等指令，再按快捷键或 Enter 结束。指令只显示在面板，模型完成后替换原选区。Esc 取消；目标或选区变化时不替换。':
     'Select text and press Alt+Z (Alt+X on Windows), say an instruction such as “Translate to English”, then press the shortcut or Enter to finish. Instructions appear only in the panel; the completed result replaces the selection. Esc cancels. A changed target or selection is never replaced.',
-  '仅在选区修改时向当前模型卡发送选区和指令；普通听写只连接 Portal。 DeepSeek 使用官方目录；其他服务使用 OpenAI Chat Completions 兼容格式。不支持选区读取的应用会提示，请用 Shift+Space 听写。':
-    'Only selection editing sends text and instructions to the active model. Ordinary dictation uses Portal only. DeepSeek uses its official catalog; other services use OpenAI Chat Completions format. If an app cannot expose its selection, use Shift+Space for dictation.',
+  '仅在选区修改时向当前模型卡发送选区和指令；普通听写只连接 Portal。 DeepSeek 使用官方目录；其他服务使用 OpenAI Chat Completions 兼容格式。无选区或应用不支持选区读取时，快捷键自动开始普通听写。':
+    'Only selection editing sends text and instructions to the active model. Ordinary dictation uses Portal only. DeepSeek uses its official catalog; other services use OpenAI Chat Completions format. With no selection or no selection-reading support, the shortcut starts ordinary dictation.',
   模型卡名称: 'Model card name',
   '例如：日常润色': 'For example: everyday editing',
   模型来源类型: 'Model provider type',
@@ -194,8 +205,8 @@ export const messages = {
   '若某些输入框选词后出现“重复重复”，可关闭此选项：普通拼音预览留在候选面板，减少客户端重复提交预编辑的兼容问题。语音预编辑不受影响。保存后立即生效，停止软件后恢复原行为。':
     'If text is duplicated after candidate selection, turn this off to keep ordinary Pinyin previews in the candidate panel. Voice preedit is unaffected. Applies after saving; stopping the app restores the original behavior.',
   '开始、结束普通语音输入': 'Start or finish ordinary dictation',
-  '有选区：语音指令修改；无选区：普通语音输入':
-    'With a selection: voice editing; otherwise: dictation',
+  '有选区：语音指令修改；无选区或无法读取：普通语音输入':
+    'With a selection: voice editing; no selection or unavailable selection: dictation',
   取消尚未提交的语音内容: 'Cancel uncommitted voice text',
   三行语音面板: 'Three-line voice panel',
   '第一行：语音波形与状态': 'Line 1: waveform and status',

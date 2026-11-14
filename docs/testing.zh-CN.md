@@ -48,6 +48,12 @@ python tests/functional/check_windows_powerpoint.py --bridge '<候选目录>/nat
 
 ## 必须覆盖的行为
 
+故障恢复覆盖录音及等待定稿时的回环 TCP 突然断开、两种状态下关闭应用，以及随后正常的新一轮。检查采集停止、原生租约和预览释放、会话任务清空、没有迟到或重复提交。合成采集与进程强制终止不代表实体麦克风或真实断电验收。全新安装从空的新旧数据位置开始；保留数据重装的夹具只在本轮内创建。
+
+录音时限回归覆盖延迟 ready、ready 前到达截止时间、预缓存/尾帧顺序上传，以及累计 295 秒边界的完整样本截取（含停止时尾帧）。通过注入时钟或缩小样本预算确定性验证边界；这些合成检查与真实时长的麦克风验收分别记录。
+
+使用较短协商上限重复验证：创建／ready 快照一致、超限预录音上传前失败、audio.end 发生时已经等待中的 receive 采用定稿截止时间。覆盖旧能力未知、全部预览时机、直接／空 final 及有序前缀替换。设置 UI 保留能力、显示当前上限和时机，并在双语切换时保留草稿。公开 `tests/portal_contract_probe.py` 用本产品 Python 访问一次性 Portal，不导入 Portal 内部或操作原生输入目标。
+
 | 层次               | 必测内容                                                                                                      |
 | ------------------ | ------------------------------------------------------------------------------------------------------------- |
 | unit / core        | 录音轮次、连接卡与密钥隔离、预览/revision/final、失焦与取消、配置热更新、快捷键不重复/不吞普通输入            |
@@ -58,7 +64,7 @@ python tests/functional/check_windows_powerpoint.py --bridge '<候选目录>/nat
 包级检查入口示例（须先构建匹配平台的候选包）：
 
 ```bash
-python tests/test_portable_deb.py .cache/build/artifacts/linux/amd64/auto/openasrinput_1.1.1_amd64.deb
+python tests/test_portable_deb.py .cache/build/artifacts/linux/amd64/auto/openasrinput_1.2.0_amd64.deb
 ```
 
 ## 结果规则

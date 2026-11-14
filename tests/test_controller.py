@@ -78,6 +78,18 @@ class ControllerTests(unittest.TestCase):
         self.assertTrue(self.host.composing)
         self.assertEqual(self.core.take_effects(), [])
 
+    def test_chinese_padding_is_removed_without_changing_english_or_wire_ledger(self):
+        self.start()
+        self.final("你好。   ")
+        self.final("  思考！  下一句。\nNew line. Two words", "u2")
+        self.core.drain()
+        self.assertEqual([row[2] for row in self.host.commits],
+                         ["你好。", "思考！下一句。\nNew line. Two words"])
+        self.assertEqual(self.core.ledger.utterances["u1"].text, "你好。   ")
+        self.final(" and more", "u3")
+        self.core.drain()
+        self.assertEqual(self.host.commits[-1][2], " and more")
+
     def test_focus_change_and_return_never_reuses_old_lease(self):
         self.start()
         self.final()
@@ -169,6 +181,49 @@ class ControllerTests(unittest.TestCase):
         self.assertEqual(
             [e.kind for e in self.core.take_effects()], ["audio.stop-flush", "audio.end"]
         )
+
+    def test_ready_does_not_reset_prebuffer_recording_deadline(self):
+        self.core.toggle()
+        self.core.take_effects()
+        self.core.recording_started(self.core.generation)
+        self.now = 12
+        self.core.bind_session(self.core.generation, "slow-ready")
+        self.event("session.ready", audio=AUDIO, finalizeTimeoutMs=2000)
+        self.core.take_effects()
+        self.now = 294.9
+        self.core.tick()
+        self.assertEqual(self.core.state, "listening")
+        self.now = 295
+        self.core.tick()
+        self.assertEqual(self.core.state, "pausing")
+        self.assertEqual(self.core.stop_reason, "recording-limit")
+        self.assertEqual([e.kind for e in self.core.take_effects()], ["audio.stop-flush", "audio.end"])
+
+    def test_recording_limit_before_ready_stops_capture_and_waits_to_send_end(self):
+        self.core.toggle()
+        self.core.take_effects()
+        self.core.recording_started(self.core.generation)
+        self.now = 295
+        self.core.tick()
+        self.assertEqual(self.core.state, "connecting")
+        self.assertTrue(self.core.pause_requested)
+        self.assertEqual([e.kind for e in self.core.take_effects()], ["audio.stop-flush"])
+        self.core.tick()
+        self.assertEqual(self.core.take_effects(), [])
+        self.core.bind_session(self.core.generation, "late-ready")
+        self.event("session.ready", audio=AUDIO, finalizeTimeoutMs=2000)
+        self.assertEqual(self.core.state, "pausing")
+        self.assertEqual([e.kind for e in self.core.take_effects()], ["audio.stop-flush", "audio.end"])
+
+    def test_ready_at_expired_capture_deadline_pauses_without_another_tick(self):
+        self.core.toggle()
+        self.core.take_effects()
+        self.core.recording_started(self.core.generation)
+        self.now = 295
+        self.core.bind_session(self.core.generation, "late-ready")
+        self.event("session.ready", audio=AUDIO, finalizeTimeoutMs=2000)
+        self.assertEqual(self.core.state, "pausing")
+        self.assertEqual([e.kind for e in self.core.take_effects()], ["audio.stop-flush", "audio.end"])
 
     def test_pause_during_connecting_does_not_start_microphone(self):
         self.core.toggle()

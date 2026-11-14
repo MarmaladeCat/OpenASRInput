@@ -200,7 +200,7 @@ class SettingsServerTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(self.store.path.exists())
 
     async def test_web_assets_and_theme_contract(self):
-        for path in ("/", "/settings.css", "/settings.mjs", "/personal-hotwords.mjs"):
+        for path in ("/", "/settings.css", "/settings.mjs", "/settings-session.mjs", "/personal-hotwords.mjs"):
             async with self.client.get(self.server.make_url(path)) as response:
                 self.assertEqual(response.status, 200)
         async with self.client.get(self.server.make_url("/api/themes")) as response:
@@ -357,3 +357,154 @@ class SettingsServerTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(body["words"][0]["text"], "Python")
             self.assertEqual(body["configRevision"], saved["revision"])
             self.assertEqual(calls, [("GET", "/v1/hotwords/dictionaries/snapshot-id", "bailian")])
+
+    async def new_page(self):
+        async with self.client.post(self.server.make_url("/api/settings/session")) as response:
+            self.assertEqual(response.status, 200)
+            return await response.json()
+
+    async def test_page_expires_after_twenty_minutes_without_renewing_on_reload(self):
+        now = 1000
+        self.settings.clock = lambda: now
+        page = await self.new_page()
+        self.assertEqual(page["settingsSession"], {"timeoutMinutes": 20, "expiresAt": 2200000})
+        self.assertNotEqual(page["token"], self.settings.token)
+        headers = {"Authorization": "Bearer " + page["token"]}
+        now = 2199
+        for path in ("settings/session", "config", "status"):
+            async with self.client.get(self.server.make_url("/api/" + path), headers=headers) as response:
+                self.assertEqual(response.status, 200)
+                if path == "settings/session":
+                    self.assertEqual((await response.json())["settingsSession"], page["settingsSession"])
+        now = 2200
+        for method, path, body in (
+            ("GET", "config", None),
+            ("GET", "settings/session", None),
+            ("PATCH", "config", {"revision": "defaults", "patch": {"audio": {"gain": 2}}}),
+            ("POST", "settings/session", None),
+        ):
+            async with self.client.request(
+                method, self.server.make_url("/api/" + path), headers=headers, json=body
+            ) as response:
+                self.assertEqual(response.status, 401)
+        self.assertFalse(self.store.path.exists())
+        fresh = await self.new_page()
+        self.assertNotEqual(fresh["token"], page["token"])
+        self.assertEqual(fresh["settingsSession"]["expiresAt"], 3400000)
+
+    async def test_duration_changes_zero_and_independent_pages(self):
+        now = 1000
+        self.settings.clock = lambda: now
+        page, other = await self.new_page(), await self.new_page()
+        headers = {"Authorization": "Bearer " + page["token"]}
+        revision = "defaults"
+
+        async def save(patch_body):
+            nonlocal revision
+            async with self.client.patch(
+                self.server.make_url("/api/config"), headers=headers,
+                json={"revision": revision, "patch": patch_body},
+            ) as response:
+                self.assertEqual(response.status, 200)
+                result = await response.json()
+                revision = result["revision"]
+                return result["settingsSession"]
+
+        self.assertEqual((await save({"settings": {"timeoutMinutes": 0}}))["expiresAt"], None)
+        now = 1000000
+        async with self.client.get(self.server.make_url("/api/config"), headers=headers) as response:
+            self.assertEqual(response.status, 200)
+        self.assertEqual((await self.new_page())["settingsSession"]["expiresAt"], None)
+        other_headers = {"Authorization": "Bearer " + other["token"]}
+        async with self.client.get(self.server.make_url("/api/config"), headers=other_headers) as response:
+            self.assertEqual(response.status, 401)
+        changed = await save({"settings": {"timeoutMinutes": 5}})
+        self.assertEqual(changed["expiresAt"], (now + 300) * 1000)
+        now += 60
+        self.assertEqual(await save({"settings": {"timeoutMinutes": 5, "theme": "nord"}}), changed)
+        for path in ("settings/session", "settings/open"):
+            async with self.client.post(self.server.make_url("/api/" + path), headers=headers, json={}) as response:
+                self.assertEqual(response.status, 403)
+
+    async def test_invalid_duration_never_changes_saved_configuration(self):
+        for minutes in (-1, 1.5, True, "20", None, 525601):
+            async with self.client.patch(
+                self.server.make_url("/api/config"),
+                json={"revision": "defaults", "patch": {"settings": {"timeoutMinutes": minutes}}},
+            ) as response:
+                self.assertEqual(response.status, 400)
+        self.assertFalse(self.store.path.exists())
+
+    async def test_expiry_does_not_cancel_another_pages_calibration(self):
+        now = 1000
+        self.settings.clock = lambda: now
+        await self.new_page()
+        now = 1100
+        other = await self.new_page()
+        self.settings.calibration_owner = other["token"]
+        with patch.object(self.settings.calibration, "close") as close:
+            now = 2200
+            await self.settings.prune_sessions()
+            close.assert_not_called()
+
+    async def test_expiry_cancels_the_owning_pages_calibration(self):
+        now = 1000
+        self.settings.clock = lambda: now
+        page = await self.new_page()
+        self.settings.calibration_owner = page["token"]
+        self.settings.calibration.job = {"state": "await-validation", "canApply": True}
+        with patch.object(self.settings.calibration, "close") as close:
+            now = 2199
+            await self.settings.prune_sessions()
+            close.assert_not_called()
+            now = 2200
+            await self.settings.prune_sessions()
+            close.assert_awaited_once()
+            self.assertEqual(self.settings.calibration.job["state"], "cancelled")
+            self.assertFalse(self.settings.calibration.job["canApply"])
+
+    async def test_expiry_while_reading_request_body_prevents_save(self):
+        now = 1000
+        self.settings.clock = lambda: now
+        page = await self.new_page()
+        original = web.Request.read
+
+        async def delayed_read(request):
+            nonlocal now
+            body = await original(request)
+            now = 2200
+            return body
+
+        with patch.object(web.Request, "read", delayed_read):
+            async with self.client.patch(
+                self.server.make_url("/api/config"),
+                headers={"Authorization": "Bearer " + page["token"]},
+                json={"revision": "defaults", "patch": {"settings": {"timeoutMinutes": 0}}},
+            ) as response:
+                self.assertEqual(response.status, 401)
+        self.assertFalse(self.store.path.exists())
+
+    async def test_calibration_start_crossing_expiry_is_cancelled(self):
+        now = 1000
+        self.settings.clock = lambda: now
+        page = await self.new_page()
+
+        async def start(revision):
+            nonlocal now
+            now = 2200
+            await self.settings.prune_sessions()
+            self.settings.calibration.job = {"state": "preparing", "canApply": False}
+            return self.settings.calibration.job.copy()
+
+        with (
+            patch.object(self.settings.calibration, "start", side_effect=start),
+            patch.object(self.settings.calibration, "close") as close,
+        ):
+            async with self.client.post(
+                self.server.make_url("/api/audio/calibration/start"),
+                headers={"Authorization": "Bearer " + page["token"]},
+                json={"revision": "defaults"},
+            ) as response:
+                self.assertEqual(response.status, 401)
+            close.assert_awaited_once()
+        self.assertEqual(self.settings.calibration.job["state"], "cancelled")

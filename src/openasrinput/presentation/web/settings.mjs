@@ -3,14 +3,11 @@ import { PersonalHotwords, wordIdentity } from './personal-hotwords.mjs';
 import { ModelCards } from './model-cards.mjs';
 import { PortalCards } from './portal-cards.mjs';
 import { AudioCalibration } from './audio-calibration.mjs';
+import { SettingsSession } from './settings-session.mjs';
 
 const byId = (id) => document.getElementById(id);
-const params = new URLSearchParams(location.hash.slice(1));
-const token = params.get('token') || sessionStorage.getItem('openasrinput-settings-token');
-if (token) {
-  sessionStorage.setItem('openasrinput-settings-token', token);
-  history.replaceState(null, '', location.pathname);
-}
+const settingsSession = new SettingsSession(expireSettings);
+let statusTimer;
 let config,
   revision,
   configPath,
@@ -109,17 +106,21 @@ function notice(message, tone = '') {
   byId('feedback').dataset.tone = tone;
 }
 
-async function api(path, method = 'GET', body) {
-  const response = await fetch('/api/' + path, {
-    method,
-    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-    signal: AbortSignal.timeout(path.startsWith('text-model/') ? 70000 : 35000),
-    redirect: 'error'
-  });
-  const value = await response.json();
-  if (!response.ok) throw new Error(value.error || `设置请求失败（${response.status}）`);
-  return value;
+function api(path, method = 'GET', body) {
+  return settingsSession.request(path, method, body);
+}
+
+function expireSettings() {
+  clearInterval(statusTimer);
+  calibration?.dispose();
+  for (const element of document.querySelectorAll('.settings-layout, footer')) {
+    element.inert = true;
+    element.hidden = true;
+  }
+  byId('settings-expired').hidden = false;
+  byId('settings-expired').focus();
+  // Default-browser tabs may reject script closing. Keep an inert expired page.
+  window.close();
 }
 
 function changed() {
@@ -278,6 +279,7 @@ function populate(value, preserveModelEdits = false) {
     theme: config.overlay.theme,
     'settings-theme': config.settings.theme,
     'settings-color-mode': config.settings.colorMode,
+    'settings-timeout': config.settings.timeoutMinutes,
     position: config.overlay.position,
     transparency: config.overlay.transparency,
     'color-mode': config.overlay.colorMode,
@@ -343,9 +345,13 @@ function renderProfiles() {
       note = document.createElement('p');
     title.textContent = profile.title;
     title.translate = !profiles.includes(profile);
+    const phase = profile.capabilities?.recognition?.preview?.phase;
+    const preview = phase === 'during_capture' ? '录音中预览'
+      : ['after_commit', 'after_audio_end'].includes(phase) ? '停止后逐步出字'
+      : phase === 'none' ? '停止后识别' : '预览时机未知';
     note.textContent =
       profile.note ||
-      `${profile.id} · ${profile.provider} · ${profile.latencyClass === 'streaming' ? '实时流式' : profile.latencyClass === 'segmented' ? '分段识别' : '延迟以服务能力为准'}`;
+      `${profile.id} · ${profile.provider} · ${preview}`;
     details.append(title, note);
     const button = document.createElement('button');
     button.textContent = selected ? '已选择' : '使用此配置';
@@ -383,7 +389,8 @@ async function save() {
         overlay: appearance(),
         settings: {
           theme: byId('settings-theme').value,
-          colorMode: byId('settings-color-mode').value
+          colorMode: byId('settings-color-mode').value,
+          timeoutMinutes: byId('settings-timeout').valueAsNumber
         },
         ...(portalChanged ? { portal } : {}),
         audio: { deviceId: byId('device').value || null, gain: Number(byId('gain').value) },
@@ -444,6 +451,13 @@ async function refreshStatus() {
     byId('runtime-status').textContent = status.running
       ? `守护进程正在运行 · ${names[status.state] || status.state}${status.pendingConnection ? ' · 连接设置等待下一轮生效' : ''}`
       : '守护进程未启动。保存的设置会在下一次启动时读取。';
+    if (status.running && ['connecting', 'listening', 'pausing'].includes(status.state)) {
+      const preview = { during_capture: '录音中预览', after_audio_end: '停止后逐步出字',
+        after_commit: '停止后逐步出字', none: '停止后识别' };
+      byId('runtime-status').textContent += ` · ${preview[status.previewPhase] || '预览时机未知'}`;
+      if (status.recordingLimitMs)
+        byId('runtime-status').textContent += ` · 录音上限 ${status.recordingLimitMs / 1000} 秒`;
+    }
     byId('runtime-error').textContent =
       status.error ||
       (status.overrides?.length ? '命令行覆盖项：' + status.overrides.join('、') : '');
@@ -768,6 +782,7 @@ byId('hotwords-form').onsubmit = (event) => {
 };
 window.addEventListener('resize', preview);
 window.addEventListener('beforeunload', (event) => {
+  if (settingsSession.expired) return;
   if (
     dirty ||
     hotwordsDirty ||
@@ -786,6 +801,7 @@ for (let index = 0; index < 48; index++) {
 }
 
 try {
+  await settingsSession.start();
   const [value, themeData] = await Promise.all([api('config'), api('themes')]);
   themes = themeData.themes;
   populate(value);
@@ -816,7 +832,7 @@ try {
   calibration.load(config);
   notice('设置已载入。');
   await refreshStatus();
-  setInterval(refreshStatus, 2000);
+  if (!settingsSession.expired) statusTimer = setInterval(refreshStatus, 2000);
 } catch (error) {
   notice(error.message, 'error');
 }

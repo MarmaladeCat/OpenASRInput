@@ -66,13 +66,12 @@ def installed_config_root():
     elif os.name == "nt":
         base = Path(os.environ.get("ProgramData", r"C:\ProgramData")) / "OpenASR"
     else:
-        base = Path("/var/lib/openasr")
-    return base / ("Input" if os.name == "nt" else "input")
+        base = Path("/var/lib/OpenASR")
+    return base / "input"
 
 
 def config_home():
-    # Source-only use retains XDG/APPDATA. Installers provision the shared root;
-    # every installed desktop user then owns a private identity subdirectory.
+    # All launch modes use the same private identity directory.
     root = installed_config_root()
     if os.name == "nt" and not os.environ.get("OPENASR_DATA_ROOT"):
         import winreg
@@ -95,14 +94,12 @@ def config_home():
                         return directory
             except FileNotFoundError:
                 pass
-    if root.is_dir() or os.environ.get("OPENASR_DATA_ROOT"):
-        directory = root / user_identity()
-        if directory.is_symlink() or (
-            os.name != "nt" and directory.exists() and directory.stat().st_uid != os.getuid()
-        ):
-            raise PermissionError("Input configuration directory belongs to another user")
-        return directory
-    return legacy_config_home()
+    directory = root / user_identity()
+    if directory.is_symlink() or (
+        os.name != "nt" and directory.exists() and directory.stat().st_uid != os.getuid()
+    ):
+        raise PermissionError("Input configuration directory belongs to another user")
+    return directory
 
 
 def socket_default():

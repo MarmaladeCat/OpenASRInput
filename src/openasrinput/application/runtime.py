@@ -140,6 +140,8 @@ class ConfigRuntime:
         self.last_status = {
             "running": True,
             "state": daemon.core.state,
+            "previewPhase": daemon.core.preview_phase,
+            "recordingLimitMs": int(daemon.core.recording_limit * 1000),
             "mode": getattr(daemon.core, "mode", "dictation"),
             "updatedAt": time.time(),
             "revision": revision,

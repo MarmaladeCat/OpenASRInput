@@ -310,7 +310,7 @@ def wix(payload, filename):
         "CustomAction",
         Id="DefaultInputData",
         Property="INPUTDATADIR",
-        Value="[CommonAppDataFolder]OpenASR\\Input\\[UserSID]",
+        Value="[CommonAppDataFolder]OpenASR\\input\\[UserSID]",
     )
     (payload / "uninstall.ini").write_text(
         "OpenASRInput\n{" + product.attrib["Id"] + "}\n", encoding="utf-8"

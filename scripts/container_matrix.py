@@ -210,6 +210,10 @@ def run_task(args, environment, arch):
             "EXPECTED_ARCH=" + arch,
         ]
         for source, (target, mode) in mounts(environment, arch).items():
+            # Source-only checks do not need release artifacts. A concurrent
+            # product build may legitimately archive that directory.
+            if args.native_only and target == "/artifacts":
+                continue
             source.mkdir(parents=True, exist_ok=True)
             command += [
                 "--mount",

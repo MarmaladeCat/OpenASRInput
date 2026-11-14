@@ -48,6 +48,12 @@ The test creates its own disposable presentation under test-results/ and covers 
 
 ## Required behavior
 
+Fault recovery includes abrupt loopback TCP loss while recording and waiting for finals, application close in both states, and a subsequent successful round. Assert stopped capture, released native lease/preview, empty session tasks, and no late or duplicate commit. Synthetic capture and process termination do not establish physical microphone or power-loss behavior. Fresh-install runs begin with empty current and legacy data locations; create retained-data fixtures only within that run for reinstallation checks.
+
+Recording-limit regressions include delayed ready, a deadline reached before ready, ordered prebuffer/tail upload, and complete-sample clipping at the cumulative 295-second limit, including stop-time tails. Use an injected clock or scaled sample budget for deterministic boundaries; keep these synthetic checks separate from real-time microphone acceptance.
+
+Repeat with a shorter negotiated profile limit: creation/ready snapshots must match, oversized prebuffer must fail before upload, and a receive already waiting when audio.end is sent must adopt the finalization deadline. Test unknown legacy capabilities, all preview phases, direct/empty finals and ordered-prefix replacement. Settings UI must retain capabilities, show active limits/timing and preserve drafts through both languages. The public `tests/portal_contract_probe.py` runs against a disposable Portal with this product's own Python; it never imports Portal internals or touches a native input target.
+
 | Layer                            | Coverage                                                                                                                                                              |
 | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | unit / core                      | Recording rounds, connection cards/key isolation, preview/revision/final, focus loss/cancel, configuration reload, no duplicate shortcuts or swallowed ordinary input |
@@ -58,7 +64,7 @@ The test creates its own disposable presentation under test-results/ and covers 
 Package check example, after building the matching target:
 
 ```bash
-python tests/test_portable_deb.py .cache/build/artifacts/linux/amd64/auto/openasrinput_1.1.1_amd64.deb
+python tests/test_portable_deb.py .cache/build/artifacts/linux/amd64/auto/openasrinput_1.2.0_amd64.deb
 ```
 
 ## Result rules

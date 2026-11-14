@@ -78,6 +78,37 @@ class DaemonTests(PortalFixture, unittest.IsolatedAsyncioTestCase):
         self.assertTrue(self.captures[1].closed)
         self.assertEqual(len(self.host.commits), 1)
 
+    async def test_short_profile_limits_prebuffer_and_stop_tail_as_one_budget(self):
+        self.session_snapshot = {"limits": {"maxRecordingMs": 30},
+                                 "capabilities": {"recognition": {"preview": {"phase": "none"}}}}
+        self.ready_gate = asyncio.Event()
+        self.daemon.core.clock = lambda: 0
+        await self.daemon.action("toggle")
+        await self.until(lambda: len(self.ws_headers) == 1)
+        self.assertEqual(self.daemon.core.recording_deadline, .03)
+        self.assertEqual(self.daemon.core.preview_phase, "none")
+        self.daemon.core.clock = lambda: .03
+        self.daemon.core.tick()
+        await self.daemon.effects()
+        self.ready_gate.set()
+        await self.until(lambda: not self.daemon.tasks)
+        self.assertEqual(b"".join(self.pcm), bytes(640) + b"\x01\x00")
+        self.assertEqual(self.daemon.core.stop_reason, "recording-limit")
+        self.assertEqual(len(self.host.commits), 1)
+
+    async def test_late_short_limit_rejects_oversized_prebuffer_without_upload(self):
+        self.ready_gate = asyncio.Event()
+        self.ready_snapshot = {"limits": {"maxRecordingMs": 10}}
+        await self.daemon.action("toggle")
+        await self.until(lambda: len(self.ws_headers) == 1)
+        self.assertEqual(self.daemon.sessions[1].recorded_bytes, 640)
+        self.ready_gate.set()
+        await self.until(lambda: not self.daemon.tasks)
+        self.assertEqual(self.pcm, [])
+        self.assertEqual(self.host.commits, [])
+        self.assertEqual(self.daemon.core.state, "failed")
+        self.assertIn("有效上限", self.daemon.core.error)
+
     async def test_pause_during_connecting_stops_capture_then_flushes_buffer_after_ready(self):
         self.ready_gate = asyncio.Event()
         await self.daemon.action("toggle")
@@ -89,6 +120,67 @@ class DaemonTests(PortalFixture, unittest.IsolatedAsyncioTestCase):
         self.ready_gate.set()
         await self.until(lambda: not self.daemon.tasks)
         self.assertEqual(self.pcm, [bytes(640), b"\x01\x00"])
+        self.assertEqual(self.daemon.core.state, "paused")
+
+    async def test_capture_clock_includes_slow_ready_and_flushes_tail_at_limit(self):
+        now = 0
+        self.daemon.core.clock = lambda: now
+        self.ready_gate = asyncio.Event()
+        await self.daemon.action("toggle")
+        await self.until(lambda: self.daemon.sessions.get(1) and self.daemon.sessions[1].queued_bytes == 640)
+        now = 12
+        self.ready_gate.set()
+        await self.until(lambda: self.daemon.core.state == "listening" and len(self.pcm) == 1)
+        self.assertEqual(self.daemon.core.recording_deadline, 295)
+        now = 295
+        self.daemon.core.tick()
+        await self.daemon.effects()
+        await self.until(lambda: not self.daemon.tasks)
+        self.assertEqual(self.pcm, [bytes(640), b"\x01\x00"])
+        self.assertEqual(self.daemon.core.state, "paused")
+        self.assertEqual(self.daemon.core.stop_reason, "recording-limit")
+
+    async def test_sample_budget_includes_prebuffer_and_clips_final_complete_sample(self):
+        self.ready_gate = asyncio.Event()
+        advance = asyncio.Event()
+        prefix, tail = b"\x01\x00" * 320, b"\x02\x00" * 321
+
+        class Capture(SyntheticCapture):
+            async def chunks(self):
+                yield prefix
+                await advance.wait()
+                yield tail
+                await self.stopped.wait()
+                yield b"\x03\x00"  # Stop-time PCM must not exceed the same budget.
+
+        capture = Capture()
+        self.daemon.capture_factory = lambda: capture
+        with patch("openasrinput.application.daemon.RECORDING_LIMIT_SECONDS", .04):
+            await self.daemon.action("toggle")
+            await self.until(lambda: self.daemon.sessions.get(1) and self.daemon.sessions[1].queued_bytes == 640)
+            advance.set()
+            await self.until(lambda: capture.closed)
+            self.assertEqual(self.pcm, [])
+            self.ready_gate.set()
+            await self.until(lambda: not self.daemon.tasks)
+        self.assertEqual(b"".join(self.pcm), prefix + tail[:640])
+        self.assertEqual(self.daemon.core.state, "paused")
+        self.assertEqual(self.daemon.core.stop_reason, "recording-limit")
+
+    async def test_sample_budget_also_bounds_a_large_stop_time_tail(self):
+        class Capture(SyntheticCapture):
+            async def chunks(self):
+                yield bytes(640)
+                await self.stopped.wait()
+                yield b"\x01\x00" * 321
+
+        self.daemon.capture_factory = Capture
+        with patch("openasrinput.application.daemon.RECORDING_LIMIT_SECONDS", .04):
+            await self.daemon.action("toggle")
+            await self.until(lambda: self.daemon.core.state == "listening" and len(self.pcm) == 1)
+            await self.daemon.action("pause")
+            await self.until(lambda: not self.daemon.tasks)
+        self.assertEqual(self.pcm, [bytes(640), b"\x01\x00" * 320])
         self.assertEqual(self.daemon.core.state, "paused")
 
     async def test_calibration_check_buffers_raw_audio_then_processes_prefix_and_tail_once(self):
@@ -328,6 +420,56 @@ class DaemonTests(PortalFixture, unittest.IsolatedAsyncioTestCase):
         self.assertTrue(self.captures[0].closed)
         self.assertEqual(self.daemon.core.state, "failed")
         self.assertEqual(self.host.commits, [])
+
+    async def test_tcp_loss_while_recording_or_finalizing_allows_a_clean_new_round(self):
+        for finalizing in (False, True):
+            with self.subTest(finalizing=finalizing):
+                previous_commits = len(self.host.commits)
+                self.end_mode = "stall"
+                self.audio_ended.clear()
+                await self.daemon.action("toggle")
+                await self.until(lambda: self.daemon.core.state == "listening")
+                sid = self.daemon.core.ledger.session_id
+                if finalizing:
+                    await self.daemon.action("pause")
+                    await asyncio.wait_for(self.audio_ended.wait(), 2)
+                # Abort the actual loopback TCP connection, without a WS close frame.
+                self.stream_transports[sid].abort()
+                await self.until(lambda: not self.daemon.tasks)
+                self.assertEqual(self.daemon.core.state, "failed")
+                self.assertTrue(self.captures[-1].closed)
+                self.assertEqual(self.daemon.sessions, {})
+                self.assertIsNone(self.host._leased)
+                self.assertIsNone(self.host.cursor_frame)
+                self.assertEqual(len(self.host.commits), previous_commits)
+                self.assertIn(sid, self.cancelled)
+                self.end_mode = "finish"
+                await self.daemon.action("toggle")
+                await self.until(lambda: self.daemon.core.state == "listening")
+                self.assertNotEqual(self.daemon.core.ledger.session_id, sid)
+                await self.daemon.action("pause")
+                await self.until(lambda: not self.daemon.tasks)
+                self.assertEqual(self.daemon.core.state, "paused")
+                self.assertEqual(len(self.host.commits), previous_commits + 1)
+
+    async def test_application_close_during_recording_and_finalizing_discards_pending_text(self):
+        for finalizing in (False, True):
+            with self.subTest(finalizing=finalizing):
+                self.end_mode = "stall"
+                self.audio_ended.clear()
+                await self.daemon.action("toggle")
+                await self.until(lambda: self.daemon.core.state == "listening")
+                if finalizing:
+                    await self.daemon.action("pause")
+                    await asyncio.wait_for(self.audio_ended.wait(), 2)
+                await asyncio.wait_for(self.daemon.close(), 2)
+                self.assertTrue(self.captures[-1].closed)
+                self.assertFalse(self.daemon.tasks)
+                self.assertFalse(self.daemon.sessions)
+                self.assertIsNone(self.host._leased)
+                self.assertIsNone(self.host.cursor_frame)
+                self.assertEqual(self.host.commits, [])
+                self.daemon = Daemon(self.host, self.client, capture_factory=self.daemon.capture_factory)
 
     async def test_broken_lazy_import_releases_connecting_state_and_allows_retry(self):
         @asynccontextmanager

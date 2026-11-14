@@ -6,6 +6,7 @@ from urllib.parse import quote, urlencode, urlsplit
 from uuid import uuid4
 
 from ..domain.ledger import AUDIO, Ledger, ProtocolError
+from ..domain.session_contract import recording_limit_ms
 
 
 class PortalRequestError(RuntimeError):
@@ -33,6 +34,7 @@ class PortalClient:
             raise ValueError("Portal profile id must be a string or omitted")
         self.url, self.api_key, self.profile_id = url.rstrip("/"), api_key, profile_id
         self.http = None
+        self.server_capabilities = None
 
     async def __aenter__(self):
         # Optional dependency: offline core and demo need only Python's stdlib.
@@ -80,6 +82,7 @@ class PortalClient:
         data = await self.request("GET", "/v1/capabilities")
         if data.get("protocolVersion") != 1 or data.get("audio") != AUDIO:
             raise ProtocolError("unsupported Portal protocol/audio")
+        self.server_capabilities = data
         return data
 
     async def profiles(self):
@@ -106,6 +109,11 @@ class PortalClient:
         return await self.request(method, path, body)
 
     async def create_session(self, *, request_id=None):
+        caps = self.server_capabilities or await self.capabilities()
+        features = caps.get("features", [])
+        if not isinstance(features, list) or any(not isinstance(name, str) for name in features):
+            raise ProtocolError("invalid Portal features")
+        required = [name for name in ("effectiveSessionLimits", "recognitionCapabilities") if name in features]
         result = await self.request(
             "POST",
             "/v1/sessions",
@@ -114,6 +122,8 @@ class PortalClient:
                 "purpose": "dictation",
                 "clientRequestId": request_id or str(uuid4()),
                 "audio": dict(AUDIO),
+                "protocolVersion": 1,
+                "requiredFeatures": required,
             },
         )
         sid, ticket, path = (
@@ -127,6 +137,14 @@ class PortalClient:
         if path != f"/v1/sessions/{quote(sid, safe='')}/stream":
             await self.cancel_session(sid)
             raise ProtocolError("streamPath must refer to this session on the same origin")
+        try:
+            if ("effectiveSessionLimits" in required and "limits" not in result
+                    or "recognitionCapabilities" in required and "capabilities" not in result):
+                raise ProtocolError("Portal omitted the negotiated session snapshot")
+            recording_limit_ms(result)
+        except ProtocolError:
+            await self.cancel_session(sid)
+            raise
         return result
 
     async def cancel_session(self, session_id):
@@ -147,6 +165,11 @@ class PortalStream:
         self.finalize_timeout = None
         self.deadline = None
         self.on_failure = None
+        self.receive_timer = None
+        self.receive_limit = None
+        self.deadline_changed = None
+        self.sent_samples = 0
+        self.max_recording_ms = recording_limit_ms(session)
 
     async def __aenter__(self):
         try:
@@ -158,7 +181,10 @@ class PortalStream:
             url = self.client.url + expected + "?" + urlencode({"ticket": self.session["ticket"]})
             # Deliberately no long-term Authorization header on WebSocket requests.
             self.socket = await self.client.http.ws_connect(url, max_msg_size=1024 * 1024)
-            event = await self.receive(timeout=15)
+            budget = self.session.get("readyTimeoutMs", 45000)
+            if type(budget) is not int or not 1000 <= budget <= 60000:
+                raise ProtocolError("invalid Portal ready timeout")
+            event = await self.receive(timeout=budget / 1000)
             if event["type"] != "session.ready":
                 if event["type"] == "session.error":
                     raise PortalRequestError(
@@ -168,6 +194,17 @@ class PortalStream:
                     )
                 raise ProtocolError("Portal did not become ready")
             self.ready_event = event
+            maximum = recording_limit_ms(event)
+            if "limits" in self.session and event.get("limits") != self.session["limits"]:
+                raise ProtocolError("Portal changed the allocated session limits")
+            if "capabilities" in self.session and event.get("capabilities") != self.session["capabilities"]:
+                raise ProtocolError("Portal changed the allocated session capabilities")
+            if "profileId" in self.session and event.get("profileId") != self.session["profileId"]:
+                raise ProtocolError("Portal changed the allocated profile")
+            if ("finalizeTimeoutMs" in event.get("limits", {})
+                    and event["finalizeTimeoutMs"] != event["limits"]["finalizeTimeoutMs"]):
+                raise ProtocolError("Portal changed the allocated finalization timeout")
+            self.max_recording_ms = maximum
             return self
         except BaseException as error:
             if self.on_failure and isinstance(error, Exception):
@@ -196,14 +233,9 @@ class PortalStream:
 
         if self.ledger.terminal:
             raise RuntimeError("session already reached its terminal event")
+        limit = asyncio.get_running_loop().time() + timeout if timeout is not None else None
         while True:
-            remaining = timeout
-            if self.deadline is not None:
-                budget = self.deadline - asyncio.get_running_loop().time()
-                if budget <= 0:
-                    raise TimeoutError("FINALIZATION_TIMEOUT")
-                remaining = min(timeout, budget) if timeout is not None else budget
-            message = await self.socket.receive(timeout=remaining)
+            message = await self._message(limit)
             if message.type != WSMsgType.TEXT:
                 raise ProtocolError("Portal stream disconnected before terminal event")
             event = json.loads(message.data)
@@ -218,12 +250,77 @@ class PortalStream:
             if self.ledger.seq > previous_seq:
                 return event
 
+    async def _message(self, limit):
+        # Reschedule the reader's timeout in place, without a task/watcher pair
+        # for each transcript message on Python 3.11+.
+        if not hasattr(asyncio, "timeout_at"):
+            return await self._message_compat(limit)
+        if self.receive_timer is not None:
+            raise RuntimeError("only one Portal receiver may be active")
+        self.receive_limit = limit
+        try:
+            deadline = self._receive_deadline()
+            if deadline is not None and deadline <= asyncio.get_running_loop().time():
+                raise asyncio.TimeoutError()
+            async with asyncio.timeout_at(deadline) as timer:
+                self.receive_timer = timer
+                return await self.socket.receive()
+        except asyncio.TimeoutError:
+            raise TimeoutError("FINALIZATION_TIMEOUT" if self.deadline is not None else "READY_TIMEOUT") from None
+        finally:
+            self.receive_timer = self.receive_limit = None
+
+    def _receive_deadline(self):
+        values = [value for value in (self.receive_limit, self.deadline) if value is not None]
+        return min(values) if values else None
+
+    async def _message_compat(self, limit):
+        # Python 3.10's async-timeout rebinds the task on update(), so a sender
+        # cannot safely reschedule it. Keep one reader and a lightweight wake.
+        loop = asyncio.get_running_loop()
+        reader, wake = loop.create_task(self.socket.receive()), None
+        try:
+            while True:
+                wake = loop.create_future()
+                self.deadline_changed = wake
+                values = [value for value in (limit, self.deadline) if value is not None]
+                remaining = min(values) - loop.time() if values else None
+                if remaining is not None and remaining <= 0:
+                    raise TimeoutError("FINALIZATION_TIMEOUT" if self.deadline is not None else "READY_TIMEOUT")
+                done, _ = await asyncio.wait((reader, wake), timeout=remaining,
+                                             return_when=asyncio.FIRST_COMPLETED)
+                wake.cancel()
+                if not done:
+                    raise TimeoutError("FINALIZATION_TIMEOUT" if self.deadline is not None else "READY_TIMEOUT")
+                if reader in done:
+                    return reader.result()
+        finally:
+            if self.deadline_changed is wake:
+                self.deadline_changed = None
+            if wake:
+                wake.cancel()
+            if not reader.done():
+                reader.cancel()
+                await asyncio.gather(reader, return_exceptions=True)
+            elif not reader.cancelled():
+                reader.exception()
+
+    def _wake_receiver(self):
+        timer = self.receive_timer
+        if timer is not None and not timer.expired():
+            timer.reschedule(self._receive_deadline())
+        if self.deadline_changed is not None and not self.deadline_changed.done():
+            self.deadline_changed.set_result(None)
+
     async def send_pcm(self, data: bytes):
         if not self.ledger.ready or self.ledger.terminal or self.ended:
             raise RuntimeError("audio may only be sent to a ready, active stream")
         if not isinstance(data, bytes) or not data or len(data) % 2:
             raise ValueError("PCM16 chunk must contain complete 16-bit samples")
+        if (self.sent_samples + len(data) // 2) * 1000 > self.max_recording_ms * 16000:
+            raise ValueError("PCM exceeds the negotiated recording limit")
         await self.socket.send_bytes(data)
+        self.sent_samples += len(data) // 2
 
     async def end_audio(self):
         if not self.ledger.ready or self.ledger.terminal:
@@ -231,8 +328,11 @@ class PortalStream:
         if not self.ended:
             self.ended = True
             self.deadline = asyncio.get_running_loop().time() + self.finalize_timeout
+            self._wake_receiver()
             await self.socket.send_json({"type": "audio.end"})
 
     async def cancel(self):
         self.ended = True
+        self.deadline = asyncio.get_running_loop().time() + 5
+        self._wake_receiver()
         await self.socket.send_json({"type": "session.cancel"})

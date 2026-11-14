@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from runtime_cache import fingerprint, record, reusable
+
 ROOT = Path(__file__).resolve().parents[1]
 
 

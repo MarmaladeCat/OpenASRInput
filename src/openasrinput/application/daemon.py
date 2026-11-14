@@ -10,7 +10,8 @@ from dataclasses import dataclass, field
 from ..adapters.audio import capture_for_platform
 from ..adapters.portal import PortalRequestError
 from ..domain.audio_processing import AudioProcessor
-from .controller import Controller
+from ..domain.session_contract import recording_limit_ms
+from .controller import RECORDING_LIMIT_SECONDS, Controller
 
 
 @dataclass
@@ -24,6 +25,7 @@ class RunningSession:
     queue: deque = field(default_factory=deque)
     wake: asyncio.Event = field(default_factory=asyncio.Event)
     queued_bytes: int = 0
+    recorded_bytes: int = 0
     stop_requested: bool = False
     capture_started: bool = False
     capture_done: bool = False
@@ -32,6 +34,7 @@ class RunningSession:
     edit_requested: bool = False
     processor: object = None
     wave_processor: object = None
+    max_recording_ms: int = 300000
 
 
 @dataclass
@@ -84,7 +87,7 @@ class Daemon:
         self.last_wave_update = 0.0
         self.session_factory = session_factory or self.default_session
         self.on_tick = on_tick
-        self.audio_buffer_limit = 16000 * 2 * 30  # At most 30 seconds of pending PCM.
+        self.audio_buffer_limit = 16000 * 2 * 60  # HTTP creation (15s) + ready budget (45s).
         self.upload_timeout = 15
 
     @asynccontextmanager
@@ -152,6 +155,7 @@ class Daemon:
         try:
             if running.stop_requested:
                 return  # A stop that preceded session initialization must not open the device.
+            self.core.recording_started(generation)
             await asyncio.wait_for(running.capture.start(), 3)
             running.capture_started = True
             if running.stop_requested:
@@ -161,10 +165,17 @@ class Daemon:
             async for chunk in running.capture.chunks():
                 if running.discard_audio:
                     continue
+                # Include pre-ready PCM and stop-time tails in the sample budget.
+                maximum = min(RECORDING_LIMIT_SECONDS, running.max_recording_ms / 1000)
+                remaining = int(maximum * 16000) * 2 - running.recorded_bytes
+                chunk = chunk[:remaining]
+                if not chunk:
+                    continue
                 if running.queued_bytes + len(chunk) > self.audio_buffer_limit:
-                    raise RuntimeError("音频缓存已满（30 秒），已停止录音；请检查后端连接后重试")
+                    raise RuntimeError("音频缓存已满，已停止录音；请检查后端连接后重试")
                 running.queue.append(chunk)
                 running.queued_bytes += len(chunk)
+                running.recorded_bytes += len(chunk)
                 running.wake.set()
                 # Present local energy before a potentially backpressured upload.
                 if running.wave_processor is None:
@@ -173,6 +184,9 @@ class Daemon:
                 if time.monotonic() - self.last_wave_update >= 0.02:
                     self.core.drain()
                     self.last_wave_update = time.monotonic()
+                if len(chunk) == remaining:
+                    self.core.limit_recording(generation)
+                    await self.effects()
             if not running.stop_requested:
                 raise RuntimeError("麦克风意外停止，已结束本轮录音")
         except Exception as error:
@@ -266,6 +280,12 @@ class Daemon:
             if not self.core.bind_session(generation, descriptor["sessionId"]):
                 await portal.cancel_session(descriptor["sessionId"])
                 return
+            try:
+                self.apply_limits(generation, running, descriptor)
+                await self.effects()
+            except Exception:
+                await portal.cancel_session(descriptor["sessionId"])
+                raise
             channel = portal.stream(descriptor)
 
             async def connection_failed(error):
@@ -284,6 +304,7 @@ class Daemon:
                     await stream.cancel()
                     return
                 running.stream = stream
+                self.apply_limits(generation, running, stream.ready_event)
                 self.core.on_event(generation, stream.ready_event)
                 self.core.drain()
                 await self.effects()
@@ -307,6 +328,13 @@ class Daemon:
                 await self.effects()
         finally:
             await self.stop_capture(running)
+
+    def apply_limits(self, generation, running, snapshot):
+        maximum = recording_limit_ms(snapshot)
+        if running.recorded_bytes > min(maximum, RECORDING_LIMIT_SECONDS * 1000) * 32:
+            raise ValueError("已录音频超过此配置的有效上限，请重新开始较短录音")
+        running.max_recording_ms = maximum
+        self.core.session_limits(generation, snapshot)
 
     async def action(self, kind):
         if kind in {"toggle", "command"}:

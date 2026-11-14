@@ -341,26 +341,45 @@ internal sealed class Host : Forms.Form
                     result = lease;
                     break;
                 case "SELECTION":
-                    result = "unsupported";
+                    result = "stale";
                     if (f.Length == 3 && f[2] == lease && Valid(true))
                     {
-                        var element = AutomationElement.FocusedElement;
-                        if (element != null && element.TryGetCurrentPattern(TextPattern.Pattern, out var pattern))
+                        result = "unsupported";
+                        selectedText = "";
+                        selectedRange = null;
+                        try
                         {
-                            var ranges = ((TextPattern)pattern).GetSelection();
-                            if (ranges.Length == 1)
+                            var element = AutomationElement.FocusedElement;
+                            if (element != null && element.TryGetCurrentPattern(TextPattern.Pattern, out var pattern))
                             {
-                                var value = ranges[0].GetText(SelectionUnits);
-                                if (value.EnumerateRunes().Count() <= SelectionCharacters)
+                                var ranges = ((TextPattern)pattern).GetSelection();
+                                if (ranges.Length == 1)
                                 {
-                                    selectedText = value;
-                                    selectedRange = value.Length == 0 ? null : ranges[0].Clone();
-                                    result = Convert.ToHexString(Utf8.GetBytes(value));
+                                    var value = ranges[0].GetText(SelectionUnits);
+                                    if (value.EnumerateRunes().Count() <= SelectionCharacters)
+                                    {
+                                        var range = value.Length == 0 ? null : ranges[0].Clone();
+                                        selectedText = value;
+                                        selectedRange = range;
+                                        result = Convert.ToHexString(Utf8.GetBytes(value));
+                                    }
+                                    else
+                                        result = "too-large";
                                 }
+                                else if (ranges.Length == 0)
+                                    result = "";
                             }
-                            else if (ranges.Length == 0)
-                                result = "";
                         }
+                        catch (Exception error) when (error is ElementNotAvailableException or
+                            InvalidOperationException or COMException or NotSupportedException)
+                        {
+                            selectedText = "";
+                            selectedRange = null;
+                            result = "unsupported";
+                        }
+                        // An optional provider may move focus or publish read-only state.
+                        if (!Valid(true))
+                            result = "stale";
                     }
                     break;
                 case "VALID":

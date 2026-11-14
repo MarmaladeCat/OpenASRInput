@@ -6,6 +6,7 @@ const path = require('node:path');
 const { spawn } = require('node:child_process');
 const { once } = require('node:events');
 const { createInterface } = require('node:readline');
+const { language } = require('./language_ui.cjs');
 const root = path.resolve(__dirname, '..');
 const temporary = fs.mkdtempSync(path.join(root, 'test-results', 'dictionary-sync-'));
 app.setPath('userData', path.join(temporary, 'browser'));
@@ -81,6 +82,11 @@ async function run() {
   windows.push(admin, input);
   await admin.loadURL(server.url + '/admin');
   await input.loadURL(settings.settingsUrl);
+  // This journey asserts Chinese feedback; choose it independently of the OS locale.
+  await js(admin, `const control = document.querySelector('[data-language-select]');
+    control.value = 'zh-CN'; control.dispatchEvent(new Event('change'));`);
+  await wait(admin, 'document.documentElement.lang === "zh-CN"');
+  await language(input, 'zh-CN');
   await js(
     admin,
     'document.getElementById("admin-key").value="test-admin-password";document.getElementById("connect").click()'
@@ -251,6 +257,7 @@ async function run() {
   });
   windows.push(second);
   await second.loadURL(settings.settingsUrl);
+  await language(second, 'zh-CN');
   await wait(second, 'document.getElementById("feedback").textContent==="设置已载入。"');
   await js(
     second,

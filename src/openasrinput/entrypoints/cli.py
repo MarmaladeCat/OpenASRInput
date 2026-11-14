@@ -149,7 +149,7 @@ def main():
     settings = subcommands.add_parser("settings", help="open this application's settings interface")
     settings.add_argument(
         "--config",
-        help="explicit configuration file (default: XDG_CONFIG_HOME/openasrinput/input.json)",
+        help="explicit configuration file (default: OpenASR/input/<OS identity>/input.json)",
     )
     settings.add_argument(
         "--port", type=int, default=int(os.environ.get("OPENASRINPUT_SETTINGS_PORT", "10088"))

@@ -20,7 +20,7 @@ from openasrinput.infrastructure.platform_support import config_home
 class ConfigTests(unittest.TestCase):
     def test_panel_preferences_and_independent_settings_theme(self):
         old = normalize({"overlay": {"theme": "nord", "colorMode": "dark"}})
-        self.assertEqual(old["settings"], {"theme": "nord", "colorMode": "dark"})
+        self.assertEqual(old["settings"], {"theme": "nord", "colorMode": "dark", "timeoutMinutes": 20})
         atomic_json(self.store.path, old)
         updated = self.store.patched(
             {
@@ -98,10 +98,12 @@ class ConfigTests(unittest.TestCase):
             with patch("openasrinput.infrastructure.config.config_home", side_effect=RuntimeError):
                 self.assertEqual(default_path(), explicit)
         variable = "APPDATA" if os.name == "nt" else "XDG_CONFIG_HOME"
-        product = "OpenASRInput" if os.name == "nt" else "openasrinput"
         with patch.dict(os.environ, {variable: str(explicit.parent)}, clear=True):
-            with patch("pathlib.Path.home", side_effect=RuntimeError):
-                self.assertEqual(config_home(), explicit.parent / product)
+            with (patch("pathlib.Path.home", side_effect=RuntimeError),
+                  patch("openasrinput.infrastructure.platform_support.installed_config_root",
+                        return_value=explicit.parent / "not-installed"),
+                  patch("openasrinput.infrastructure.platform_support.user_identity", return_value="test-user")):
+                self.assertEqual(config_home(), explicit.parent / "not-installed/test-user")
 
     def test_installed_user_migration_preserves_credentials_and_metadata_once(self):
         root = Path(self.directory.name)

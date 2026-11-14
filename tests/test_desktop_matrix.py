@@ -11,14 +11,17 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
-with patch.object(sys, "path", [str(ROOT / "scripts"), *sys.path]):
-    spec = importlib.util.spec_from_file_location(
-        "desktop_matrix", ROOT / "scripts/desktop_matrix.py"
-    )
-    matrix = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(matrix)
+matrix = None
+if sys.platform == "linux":
+    with patch.object(sys, "path", [str(ROOT / "scripts"), *sys.path]):
+        spec = importlib.util.spec_from_file_location(
+            "desktop_matrix", ROOT / "scripts/desktop_matrix.py"
+        )
+        matrix = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(matrix)
 
 
+@unittest.skipUnless(sys.platform == "linux", "Desktop matrix orchestration requires Linux")
 class DesktopMatrixTests(unittest.TestCase):
     def args(self, root, **overrides):
         return SimpleNamespace(

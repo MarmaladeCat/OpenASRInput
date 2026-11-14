@@ -7,9 +7,10 @@ an existing Portal: the integration instructions start a dedicated test instance
 import argparse
 import asyncio
 
-from openasrinput.adapters.portal import PortalClient
+from openasrinput.adapters.portal import PortalClient, PortalRequestError
 from openasrinput.application.controller import Controller
 from openasrinput.domain.bridge import MemoryBridge
+from openasrinput.domain.ledger import AUDIO
 
 
 async def probe(url):
@@ -66,6 +67,7 @@ async def probe(url):
             while not one.ledger.terminal:
                 await one.receive()
             assert one.ledger.final_count == 0
+            await two.send_pcm(bytes(640))
             await two.end_audio()
             while not two.ledger.terminal:
                 await two.receive()
@@ -75,6 +77,58 @@ async def probe(url):
         await client.clear_hotword_statistics()
         vocabulary = await client.hotwords()
         assert not vocabulary["learnedTerms"] and vocabulary["terms"][0]["text"] == "麒麟"
+        profiles = await client.profiles()
+        for profile in profiles["profiles"]:
+            if not profile["id"].startswith("workflow-"):
+                continue
+            async with PortalClient(url, "client-key", profile["id"]) as workflow:
+                bridge = MemoryBridge()
+                bridge.focus("workflow")
+                controller = Controller(bridge)
+                controller.toggle()
+                controller.take_effects()
+                descriptor = await workflow.create_session()
+                assert descriptor["capabilities"] == profile["capabilities"]
+                generation = controller.generation
+                assert controller.bind_session(generation, descriptor["sessionId"])
+                async with workflow.stream(descriptor) as stream:
+                    controller.on_event(generation, stream.ready_event)
+                    controller.take_effects()
+                    await stream.send_pcm(b"\x01\x00" * 3200)
+                    if profile["capabilities"]["recognition"]["preview"]["phase"] == "during_capture":
+                        preview = await asyncio.wait_for(stream.receive(), 5)
+                        assert preview["type"] == "transcript.partial", preview
+                        controller.on_event(generation, preview)
+                        controller.drain()
+                        assert not bridge.commits
+                    controller.toggle()
+                    controller.take_effects()
+                    await stream.end_audio()
+                    while not stream.ledger.terminal:
+                        event = await stream.receive()
+                        controller.on_event(generation, event)
+                        controller.drain()
+                assert controller.state == "paused", controller.error
+                assert "".join(text for _, _, text in bridge.commits) == "最终文本。", bridge.commits
+                assert stream.ledger.final_count == 1
+                # Cancelling a buffered file before end must not create another request.
+                if profile["capabilities"]["recognition"]["upstreamInput"] == "complete_recording":
+                    async with workflow.stream(await workflow.create_session()) as stream:
+                        await stream.send_pcm(b"\x01\x00" * 3200)
+                        await stream.cancel()
+                        while not stream.ledger.terminal:
+                            await stream.receive()
+                        assert stream.ledger.final_count == 0
+                print("PASS public workflow:", profile["id"])
+        # An old v1 consumer that did not negotiate shorter limits is rejected at creation.
+        async with PortalClient(url, "client-key", "workflow-local-file") as legacy:
+            legacy.server_capabilities = {"protocolVersion": 1, "audio": AUDIO, "features": []}
+            try:
+                await legacy.create_session()
+            except PortalRequestError as error:
+                assert error.code == "UNSUPPORTED_FEATURE"
+            else:
+                raise AssertionError("short-limit profile accepted an unnegotiated client")
     print(
         "Portal v1 integration passed: default profile, pause/resume, PCM16, finals, cancellation isolation, personal hotwords"
     )

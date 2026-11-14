@@ -81,9 +81,8 @@ class NativeBridge:
     def selection(self, lease):
         value = self.request("SELECTION", lease.lease_id)
         if value == "unsupported":
-            raise ValueError(
-                "当前应用不提供选区读取；请使用支持选区的编辑器，或用 Shift+Space 听写"
-            )
+            # Selection editing is optional; ordinary dictation only needs a lease.
+            return ""
         if value == "stale":
             raise ValueError("选区已变化，未开始文本修改")
         return bytes.fromhex(value).decode("utf-8")

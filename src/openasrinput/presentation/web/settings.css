@@ -76,6 +76,9 @@ select:focus-visible {
   flex-direction: column;
   background: var(--background);
 }
+#settings-expired {
+  margin: 28px;
+}
 .settings-header {
   display: flex;
   align-items: center;

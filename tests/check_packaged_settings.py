@@ -32,7 +32,7 @@ def main():
         home, tools = stage / "home", stage / "tools"
         home.mkdir()
         tools.mkdir()
-        state = home / "state/openasrinput/package"
+        state = home / "config/openasrinput/package"
         state.mkdir(parents=True)
         ready = state / "settings-ready.json"
         launcher = payload / "usr/bin/openasrinput"

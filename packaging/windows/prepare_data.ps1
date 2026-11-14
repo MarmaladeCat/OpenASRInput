@@ -17,7 +17,7 @@ foreach ($path in @($DataDir, $LegacyDataDir)) {
     }
 }
 $root = Join-Path $env:ProgramData 'OpenASR'
-$users = Join-Path $root 'Input'
+$users = Join-Path $root 'input'
 foreach ($path in @($root, $users)) {
     if ((Test-Path -LiteralPath $path) -and ((Get-Item -LiteralPath $path).Attributes -band [IO.FileAttributes]::ReparsePoint)) {
         throw 'Input configuration parent cannot be a reparse point.'

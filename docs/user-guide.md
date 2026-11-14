@@ -2,7 +2,7 @@
 
 **English** | [简体中文](user-guide.zh-CN.md)
 
-Version **1.1.1**. This guide covers first installation, daily dictation, selection editing, multiple services, and recovery. See [API](API.md) for integration and [development](development.md) for source builds. Licensed under [GPL v3](../LICENSE). English descriptions below retain key Chinese button labels where useful for locating controls in the current UI.
+Version **1.2.0**. This guide covers first installation, daily dictation, selection editing, multiple services, and recovery. See [API](API.md) for integration and [development](development.md) for source builds. Licensed under [GPL v3](../LICENSE). English descriptions below retain key Chinese button labels where useful for locating controls in the current UI.
 
 ## 1. Logical architecture
 
@@ -22,7 +22,11 @@ The settings page, recording daemon, and native bridge have separate roles: **op
 
 Recognition can revise repeatedly. New preedit replaces old preview; stable finals commit once. The panel shows recent text only: Linux's “20-word buffer” limits display, not the complete committed text. Already committed text belongs to the target document. Esc cancels uncommitted content in this round, not the whole document.
 
-Capture starts before Portal is ready, buffering up to 30 seconds in memory. Connection errors or a full buffer stop recording and show an error. This is not long-term offline recording. After focus becomes invalid, pending text is never automatically redirected to another window.
+Capture starts before Portal is ready, buffering up to 60 seconds in memory to cover HTTP creation and the negotiated 45-second startup budget. Connection errors or a full buffer stop recording and show an error. This is not long-term offline recording. After focus becomes invalid, pending text is never automatically redirected to another window.
+
+A round automatically pauses at the smaller of 295 seconds and the profile's negotiated recording limit, measured from capture startup including connection-time buffering. The same budget bounds total audio and the final flushed samples. Complete-recording LocalASR profiles allow 60 seconds. Wait for finalization, then press the shortcut for a new round; finalization has its own Portal-declared timeout.
+
+Profile cards distinguish preview during recording, incremental text after stopping, recognition after stopping, and unknown timing. The running status shows the active round's timing and limit. OpenAI file SSE produces incremental text only after stopping; live-preview Realtime is a separate Portal profile. A whole preview tail can change while earlier stable text remains committed in audio order.
 
 ### 1.3 Credentials
 
@@ -39,14 +43,14 @@ Windows uses x64 MSI; Debian/Ubuntu Linux uses amd64 or ARM64 deb. `amd64` means
 Download the matching file and its exact `filename.sha256` companion. Each checksum file contains one installer record. Linux can run `sha256sum -c filename.sha256` in the download directory. On Windows:
 
 ```powershell
-Get-FileHash .\OpenASRInput_1.1.1_windows_amd64.msi -Algorithm SHA256
+Get-FileHash .\OpenASRInput_1.2.0_windows_amd64.msi -Algorithm SHA256
 ```
 
 Compare the result with the matching `.sha256` file. Read the bilingual guides and illustrations in this repository.
 
 ### 2.2 Windows installation and first run
 
-1. Run `OpenASRInput_1.1.1_windows_amd64.msi` and complete the wizard.
+1. Run `OpenASRInput_1.2.0_windows_amd64.msi` and complete the wizard.
 2. Open OpenASRInput settings from Start. Standalone Input MSI does not include Portal; use your administrator's address for an existing remote Portal.
 3. In Windows Settings → Privacy & security → Microphone, permit desktop apps and confirm the device is not muted in Sound settings.
 4. Check the Portal card, microphone, and native bridge as described below.
@@ -61,7 +65,7 @@ Real settings service extracted from the 1.0.0 MSI on Windows 11 amd64, using te
 In the download directory (substitute the ARM64 file when appropriate):
 
 ```bash
-sudo apt install ./OpenASRInput_1.1.1_linux_amd64.deb
+sudo apt install ./OpenASRInput_1.2.0_linux_amd64.deb
 openasrinput settings
 ```
 
@@ -93,6 +97,10 @@ Real Linux amd64 source settings page, captured without the input daemon. It sho
 ## 3. Settings and everyday operation
 
 ### 3.1 Saving settings
+
+`openasrinput settings` opens the local settings page in your default browser. Under **Appearance → Settings page theme**, **Page lifetime (minutes)** defaults to **20**; **0** disables expiry. Each new page session has its own deadline. Reloading or using the page does not renew it. Saving a changed lifetime restarts the current page's timer and sets the default for future pages; other open pages keep their deadlines.
+
+At expiry the page credential becomes invalid, polling stops, and the page attempts to close. Browsers may prevent a system-opened tab from closing itself; in that case an inactive “Settings page expired” screen remains. Unsaved edits are discarded. Run `openasrinput settings` again to open a fresh session. Expiry does not stop dictation or Portal; a calibration owned by the expired page is cancelled. “No expiry” lasts until the settings service stops.
 
 Bottom Save Settings (保存设置) handles general appearance, device, quick connection, framework, and socket forms. Do not close the browser while “unsaved” is shown. Reload (重新载入) rereads saved values; resolve pending edits first.
 
@@ -145,7 +153,7 @@ Create a card in order: name → source → API address/key → model name → s
 
 Test Availability (测试可用性) uses a fixed example and incurs a small model charge; a failed test does not prevent saving. Name, source, address, model, and key are required for a saved card. Disable Text Editing does not affect dictation.
 
-Select text in the target app, press Linux **Alt+Z** / Windows **Alt+X**, speak an instruction such as “make this a shorter notice,” then press again to finish. The panel shows the command; completion replaces the original selection. Linux also supports Enter to finish and Esc to cancel. A changed target/selection must not be replaced. If an app cannot expose its selection, use ordinary dictation or a supported editor.
+Select text in the target app, press Linux **Alt+Z** / Windows **Alt+X**, speak an instruction such as “make this a shorter notice,” then press again to finish. The panel shows the command; completion replaces the original selection. Linux also supports Enter to finish and Esc to cancel. A changed target/selection must not be replaced. With no readable selection, the same shortcut starts ordinary dictation; unsupported optional selection reading does not block it.
 
 ### 3.6 Input and shortcuts: a full dictation round
 
@@ -155,7 +163,7 @@ Select text in the target app, press Linux **Alt+Z** / Windows **Alt+X**, speak 
 4. Press **Shift+Space** again and await final results/commits. On Linux, Enter finalizes; Esc cancels uncommitted content.
 5. Check the target text before switching windows. After a target change/uncertain ACK, inspect the document before rerecording to avoid duplicates.
 
-Voice mode may consume ordinary characters/edit keys during recording; resume keyboard editing afterward. Alt+Z/Alt+X without a selection may enter ordinary voice input. The old Windows Alt+Z screenshot hint is not authoritative.
+Voice mode may consume ordinary characters/edit keys during recording; resume keyboard editing afterward. Alt+Z/Alt+X without a selection, or when selection reading is unsupported, starts ordinary dictation like Shift+Space. The old Windows Alt+Z screenshot hint is not authoritative. Dictation removes padding spaces after Chinese `。！？`, retaining English word spaces and newlines.
 
 Linux's “Use inline preedit for ordinary Wusong keyboard input” affects ordinary Pinyin only. If candidate selection duplicates text in some fields, disable/save it to keep Pinyin previews in the candidate panel. Voice preedit is unaffected; stopping the software restores original behavior.
 
@@ -186,7 +194,7 @@ For self-signed deployments, establish trust using the administrator's public ce
 
 ### 4.2 Configuration and isolated instances
 
-Current-source installed defaults are Windows `%ProgramData%\OpenASR\Input\<SID>\input.json` and Linux `/var/lib/openasr/input/<uid>/input.json`. Earlier packages and source-only use fall back to `%APPDATA%\OpenASRInput` or the XDG configuration directory. Connection and About shows the actual path. See [installation and language selection](installation.md) for combined packages, migration, first setup, and retained-data reinstallation.
+Standalone, combined and source launches use Windows `%ProgramData%\OpenASR\input\<SID>\input.json` or Linux `/var/lib/OpenASR/input/<uid>/input.json`. Installers prepare permissions. Explicit configuration paths remain supported; source development should select an isolated `OPENASRINPUT_CONFIG`. Connection and About shows the actual path. See [installation and language selection](installation.md) for migration and retained-data reinstallation.
 
 `OPENASRINPUT_CONFIG` selects another configuration; `OPENASRINPUT_SOCKET` isolates the bridge. Use these for genuinely separate test instances and keep settings/daemon values consistent, or the page may save a different instance's settings. Configuration contains credentials; remove secrets before sharing.
 

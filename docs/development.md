@@ -23,6 +23,8 @@ Linux native builds need the relevant input-method development libraries; Window
 
 ## Changes and checks
 
+Consume recognition capabilities and effective limits through `domain/session_contract.py`, using creation/ready snapshots consistently in the transport and controller. The recording clock and sample budget include pre-ready capture and stop tails. Public finals are an immutable ordered prefix; native commits must never repair upstream ordering by replay or rollback. See [API semantics](API.md).
+
 ```bash
 python scripts/test.py setup --suite unit
 python scripts/test.py run --suite unit --allow-skips
@@ -57,7 +59,7 @@ Public package filenames are `OpenASRInput_<version>_<os>_<architecture>.<extens
 
 For a docs-only preview, create `test-results/`, then run `python scripts/release.py --docs test-results/product-docs.zip`. All authored Markdown, images, and linked attachments retain their original bytes and relative paths. Flat releases include `release.md` / `release.zh-CN.md` beside identical README copies to keep language links valid.
 
-VERSION and tool metadata are **1.1.1**. Candidates go to `.cache/build/artifacts/<os>/<arch>/<variant>/`; `scripts/release.py` publishes successful candidates to `release/1.1.1/`, never dist/. The version directory contains flat packages, complete docs ZIP, bilingual READMEs, manifest, and SHA256SUMS.
+VERSION and tool metadata are **1.2.0**. Candidates go to `.cache/build/artifacts/<os>/<arch>/<variant>/`; `scripts/release.py` publishes successful candidates to `release/1.2.0/`, never dist/. The version directory contains flat packages, complete docs ZIP, bilingual READMEs, manifest, and SHA256SUMS.
 
 The publisher checks version, architecture, unique candidates, and hashes. Other platforms merge only with matching source provenance. Old receipts cannot establish new candidates after source/docs changes; rebuild relevant targets. Record builds and platform acceptance separately.
 

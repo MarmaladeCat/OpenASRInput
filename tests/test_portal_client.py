@@ -25,6 +25,11 @@ class PortalFixture:
         self.timeout_ms = 1000
         self.sessions = 0
         self.ready_gate = None
+        self.features = []
+        self.session_snapshot = {}
+        self.ready_snapshot = None
+        self.stream_transports = {}
+        self.audio_ended = asyncio.Event()
         app = web.Application()
         app.router.add_get("/v1/capabilities", self.capabilities)
         app.router.add_post("/v1/sessions", self.create)
@@ -42,7 +47,7 @@ class PortalFixture:
 
     async def capabilities(self, request):
         self.requests.append((request.headers.get("Authorization"), None))
-        return web.json_response({"protocolVersion": 1, "audio": AUDIO})
+        return web.json_response({"protocolVersion": 1, "audio": AUDIO, "features": self.features})
 
     async def create(self, request):
         body = await request.json()
@@ -56,6 +61,7 @@ class PortalFixture:
                 "ticket": "one-time-ticket",
                 "streamPath": f"/v1/sessions/{sid}/stream",
                 "ticketExpiresInMs": 30000,
+                **self.session_snapshot,
             },
             status=201,
         )
@@ -75,8 +81,11 @@ class PortalFixture:
         socket = web.WebSocketResponse()
         await socket.prepare(request)
         sid = request.match_info["sid"]
+        self.stream_transports[sid] = request.transport
         if self.ready_gate is not None:
             await self.ready_gate.wait()
+        if getattr(self, "ready_delay", 0):
+            await asyncio.sleep(self.ready_delay)
         if getattr(self, "fail_before_ready", False):
             await socket.send_json(
                 {
@@ -96,6 +105,7 @@ class PortalFixture:
                 "seq": 1,
                 "audio": AUDIO,
                 "finalizeTimeoutMs": self.timeout_ms,
+                **(self.session_snapshot if self.ready_snapshot is None else self.ready_snapshot),
             }
         )
         from aiohttp import WSMsgType
@@ -118,6 +128,7 @@ class PortalFixture:
             elif message.type == WSMsgType.TEXT:
                 command = message.json()["type"]
                 if command == "audio.end":
+                    self.audio_ended.set()
                     if self.end_mode == "stall":
                         continue
                     seq, revision = 2, 1
@@ -164,6 +175,42 @@ class PortalFixture:
 
 @unittest.skipIf(web is None, "install the optional portal dependency to run transport tests")
 class PortalClientTests(PortalFixture, unittest.IsolatedAsyncioTestCase):
+    async def test_negotiated_short_limit_and_changed_ready_snapshot(self):
+        self.features = ["effectiveSessionLimits", "recognitionCapabilities"]
+        self.session_snapshot = {"limits": {"maxRecordingMs": 20}, "profileId": "file",
+                                 "capabilities": {"recognition": {"preview": {"phase": "none"}}}}
+        descriptor = await self.client.create_session()
+        self.assertEqual(self.requests[-1][1]["requiredFeatures"], self.features)
+        async with self.client.stream(descriptor) as stream:
+            await stream.send_pcm(bytes(640))
+            with self.assertRaises(ValueError):
+                await stream.send_pcm(bytes(2))
+            await stream.end_audio()
+            while not stream.ledger.terminal:
+                await stream.receive()
+        self.assertEqual(self.pcm, [bytes(640)])
+        self.ready_snapshot = {**self.session_snapshot, "limits": {"maxRecordingMs": 40}}
+        descriptor = await self.client.create_session()
+        with self.assertRaises(ProtocolError):
+            async with self.client.stream(descriptor):
+                self.fail("changed limits must fail before audio")
+        self.assertIn(descriptor["sessionId"], self.cancelled)
+
+    async def test_advertised_snapshot_cannot_be_omitted_after_negotiation(self):
+        self.features = ["effectiveSessionLimits"]
+        with self.assertRaises(ProtocolError):
+            await self.client.create_session()
+        self.assertEqual(self.cancelled, ["s1"])
+
+    async def test_ready_after_sixteen_seconds_survives_old_client_deadline(self):
+        self.ready_delay = 16
+        descriptor = await self.client.create_session()
+        descriptor["readyTimeoutMs"] = 45000
+        async with self.client.stream(descriptor) as stream:
+            self.assertTrue(stream.ledger.ready)
+            await stream.cancel()
+            self.assertEqual((await stream.receive())["type"], "session.cancelled")
+
     async def test_default_selection_omits_profile_and_explicit_selection_is_preserved(self):
         for profile in (None, "", "local"):
             async with PortalClient(self.client.url, "input-key", profile) as client:
@@ -235,7 +282,7 @@ class PortalClientTests(PortalFixture, unittest.IsolatedAsyncioTestCase):
             async with self.client.stream(session):
                 self.fail("must not follow a redirect")
         self.assertEqual(self.cancelled, [session["sessionId"]])
-        self.assertEqual(len(self.requests), 1)
+        self.assertEqual(len(self.requests), 2)  # Capabilities plus session creation.
 
     async def test_stream_path_cannot_send_ticket_to_other_origin(self):
         self.descriptor_override = {
@@ -255,6 +302,30 @@ class PortalClientTests(PortalFixture, unittest.IsolatedAsyncioTestCase):
                 await stream.end_audio()
                 await stream.receive()
         self.assertEqual(self.cancelled, [session["sessionId"]])
+
+    async def test_end_wakes_an_already_pending_receive_deadline(self):
+        self.end_mode, self.timeout_ms = "stall", 20
+        descriptor = await self.client.create_session()
+        async with self.client.stream(descriptor) as stream:
+            waiting = asyncio.create_task(stream.receive())
+            await asyncio.sleep(0)
+            await stream.end_audio()
+            with self.assertRaises(TimeoutError):
+                await asyncio.wait_for(waiting, .5)
+
+    async def test_external_cancellation_releases_reader_without_becoming_timeout(self):
+        descriptor = await self.client.create_session()
+        async with self.client.stream(descriptor) as stream:
+            waiting = asyncio.create_task(stream.receive(timeout=30))
+            await asyncio.sleep(0)
+            waiting.cancel()
+            with self.assertRaises(asyncio.CancelledError):
+                await waiting
+            self.assertIsNone(stream.receive_timer)
+            await stream.end_audio()
+            while not stream.ledger.terminal:
+                await stream.receive()
+            self.assertEqual(stream.ledger.final_count, 1)
 
     async def test_stale_revision_is_delivered_to_keep_controller_sequence_complete(self):
         self.end_mode = "stale-revision"

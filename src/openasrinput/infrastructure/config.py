@@ -15,7 +15,13 @@ from urllib.parse import urlsplit
 from ..presentation.themes import THEMES
 from .audio_profiles import validate_profiles
 from .model_cards import fingerprint, merge_cards, normalize_editor, require_complete
-from .platform_support import config_home, exclusive_lock, legacy_config_home, socket_default
+from .platform_support import (
+    config_home,
+    exclusive_lock,
+    legacy_config_home,
+    socket_default,
+    user_identity,
+)
 from .portal_cards import fingerprint as portal_fingerprint
 from .portal_cards import merge_cards as merge_portal_cards
 from .portal_cards import normalize_portal
@@ -59,7 +65,7 @@ DEFAULTS = {
         )
     },
     "input": {"keyboardInlinePreedit": True, "framework": "auto"},
-    "settings": {"theme": "material", "colorMode": "light"},
+    "settings": {"theme": "material", "colorMode": "light", "timeoutMinutes": 20},
 }
 EDITABLE = {
     "portal": {"url", "apiKey", "profileId", "clearApiKey", "cards", "activePortalCardId"},
@@ -75,7 +81,7 @@ EDITABLE = {
         "position",
         "transparency",
     },
-    "settings": {"theme", "colorMode"},
+    "settings": {"theme", "colorMode", "timeoutMinutes"},
     "runtime": {"socketPath"},
     "input": {"keyboardInlinePreedit", "framework"},
 }
@@ -179,6 +185,7 @@ def normalize(value):
         raise ValueError("请选择支持的面板位置")
     _number(overlay["transparency"], 0, 100, "面板透明度", integer=True)
     settings = config["settings"]
+    _number(settings["timeoutMinutes"], 0, 525600, "设置页面有效期（分钟）", integer=True)
     if (
         not isinstance(settings["theme"], str)
         or settings["theme"] not in THEMES
@@ -224,6 +231,10 @@ class ConfigStore:
     def migrate_legacy(self):
         """Copy this user's configuration once; keep the legacy copy for recovery."""
         previous = legacy_config_home()
+        if os.name != "nt" and not os.environ.get("OPENASR_DATA_ROOT"):
+            installed = Path("/var/lib/openasr/input") / user_identity()
+            if (installed / "input.json").is_file():
+                previous = installed
         if previous.resolve() == self.path.parent or not (previous / "input.json").is_file():
             return
         if self.path.exists():

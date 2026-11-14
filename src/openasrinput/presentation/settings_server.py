@@ -27,9 +27,12 @@ BRANDING = Path(__file__).with_name("branding")
 
 
 class SettingsServer:
-    def __init__(self, store=None):
+    def __init__(self, store=None, *, clock=time.time):
         self.store = store or ConfigStore()
+        self.clock = clock
         self.token = secrets.token_urlsafe(32)
+        self.page_sessions = {}
+        self.calibration_owner = None
         self.origin = ""
         self.browser_loads = {}
         self.browser_tasks = set()
@@ -74,15 +77,97 @@ class SettingsServer:
         self.queue_open(body.get("portalUrl", ""))
         return web.json_response({"ok": True})
 
+    def session_deadline(self, minutes):
+        return {
+            "timeoutMinutes": minutes,
+            "expiresAt": self.clock() + minutes * 60 if minutes else None,
+        }
+
+    @staticmethod
+    def session_view(session):
+        deadline = session["expiresAt"]
+        return {**session, "expiresAt": deadline * 1000 if deadline is not None else None}
+
+    def check_page_session(self, request):
+        if request["launcher"]:
+            return
+        session = self.page_sessions.get(request["page_token"])
+        if session is None or (
+            session["expiresAt"] is not None and self.clock() >= session["expiresAt"]
+        ):
+            raise web.HTTPUnauthorized(text="设置会话已失效，请重新打开设置")
+
+    async def prune_sessions(self):
+        expired = [
+            token
+            for token, session in self.page_sessions.items()
+            if session["expiresAt"] is not None and self.clock() >= session["expiresAt"]
+        ]
+        for token in expired:
+            self.page_sessions.pop(token, None)
+        if self.calibration_owner is not None and self.calibration_owner not in self.page_sessions:
+            # Serialize cleanup with start/apply/cancel, and recheck ownership after waiting.
+            async with self.calibration.operation:
+                if self.calibration_owner is None or self.calibration_owner in self.page_sessions:
+                    return
+                self.calibration_owner = None
+                await self.calibration.close()
+                if self.calibration.job["state"] in ACTIVE | {"await-validation"}:
+                    self.calibration.job.update(
+                        state="cancelled", message="设置页已离开，校准已结束。", canApply=False
+                    )
+
+    async def session_lifecycle(self, app):
+        async def sweep():
+            while True:
+                await asyncio.sleep(1)
+                await self.prune_sessions()
+
+        task = asyncio.create_task(sweep())
+        try:
+            yield
+        finally:
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+            self.page_sessions.clear()
+
+    async def page_session(self, request):
+        if request.method == "POST":
+            if not request["launcher"]:
+                raise web.HTTPForbidden(text="请通过 settings 命令重新打开设置")
+            config, _ = self.store.read()
+            token = secrets.token_urlsafe(32)
+            session = self.session_deadline(config["settings"]["timeoutMinutes"])
+            self.page_sessions[token] = session
+            return web.json_response({"token": token, "settingsSession": self.session_view(session)})
+        if request["launcher"]:
+            raise web.HTTPUnauthorized(text="请通过 settings 命令重新打开设置")
+        return web.json_response({"settingsSession": self.session_view(request["page_session"])})
+
     @web.middleware
     async def boundary(self, request, handler):
         try:
             if request.path.startswith("/api/"):
-                expected = "Bearer " + self.token
-                if not secrets.compare_digest(request.headers.get("Authorization", ""), expected):
+                await self.prune_sessions()
+                authorization = request.headers.get("Authorization", "")
+                request["launcher"] = secrets.compare_digest(authorization, "Bearer " + self.token)
+                token = authorization.removeprefix("Bearer ")
+                session = (
+                    self.page_sessions.get(token) if authorization.startswith("Bearer ") else None
+                )
+                if not request["launcher"] and session is None:
                     raise web.HTTPUnauthorized(text="设置会话已失效，请重新打开设置")
+                request["page_session"] = session
+                request["page_token"] = token if session is not None else None
                 if request.headers.get("Origin") not in (None, self.origin):
                     raise web.HTTPForbidden(text="设置请求来源无效")
+                if request.path == "/api/settings/open" and not request["launcher"]:
+                    raise web.HTTPForbidden(text="请通过 settings 命令重新打开设置")
+                if request.can_read_body:
+                    # A request started just before expiry must not save a slowly arriving body.
+                    await request.read()
+                    await self.prune_sessions()
+                    self.check_page_session(request)
             response = await handler(request)
         except ConfigConflict as error:
             response = web.json_response({"error": str(error)}, status=409)
@@ -111,12 +196,16 @@ class SettingsServer:
         app.router.add_get("/{name:model-cards\\.mjs}", self.asset)
         app.router.add_get("/{name:portal-cards\\.mjs}", self.asset)
         app.router.add_get("/{name:audio-calibration\\.mjs}", self.asset)
+        app.router.add_get("/{name:settings-session\\.mjs}", self.asset)
         app.router.add_get(
             "/{name:(?:i18n|messages|dynamic-messages|error-messages)\\.mjs}", self.asset
         )
         app.router.add_get("/api/config", self.config)
         app.router.add_get("/api/health", self.health)
         app.router.add_post("/api/settings/open", self.open_browser)
+        app.router.add_post("/api/settings/session", self.page_session)
+        app.router.add_get("/api/settings/session", self.page_session)
+        app.cleanup_ctx.append(self.session_lifecycle)
         app.on_cleanup.append(self.close_browsers)
         app.router.add_patch("/api/config", self.save)
         app.router.add_get("/api/themes", self.themes)
@@ -167,7 +256,14 @@ class SettingsServer:
 
     async def save(self, request):
         body = await request.json()
-        return web.json_response(self.store.save(body["patch"], body["revision"]))
+        value = self.store.save(body["patch"], body["revision"])
+        session = request["page_session"]
+        if session is not None:
+            minutes = body["patch"].get("settings", {}).get("timeoutMinutes")
+            if minutes is not None and minutes != session["timeoutMinutes"]:
+                session.update(self.session_deadline(minutes))
+            value["settingsSession"] = self.session_view(session)
+        return web.json_response(value)
 
     async def themes(self, request):
         return web.json_response({"themes": public_themes()})
@@ -218,6 +314,7 @@ class SettingsServer:
                     "id": profile["id"],
                     "title": profile.get("title", profile["id"]),
                     "provider": profile.get("provider", ""),
+                    "capabilities": profile.get("capabilities", {}),
                     "latencyClass": profile.get("capabilities", {}).get("latencyClass", "unknown"),
                     "textProcessing": profile.get("capabilities", {}).get(
                         "textProcessing", "unknown"
@@ -248,6 +345,10 @@ class SettingsServer:
         action = request.match_info["action"]
         if action == "start":
             result = await self.calibration.start(body.get("revision"))
+            self.calibration_owner = request["page_token"]
+            # Starting may have waited for the preceding job's cleanup across the deadline.
+            await self.prune_sessions()
+            self.check_page_session(request)
         elif action == "reset":
             if self.calibration.job["state"] in ACTIVE | {"await-validation"}:
                 raise ValueError("请先取消校准任务")

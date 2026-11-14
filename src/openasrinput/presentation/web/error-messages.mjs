@@ -1,4 +1,12 @@
 export const errorMessages = {
+  '已录音频超过此配置的有效上限，请重新开始较短录音': 'Recorded audio exceeds this profile’s effective limit. Start a shorter recording.',
+  '上游识别结果身份、顺序或定稿状态无效': 'Invalid upstream result identity, order, or finalization state',
+  '录音超过本轮有效上限': 'Recording exceeds this session’s effective limit',
+  '录音等待超过本轮有效上限': 'Recording wait exceeds this session’s effective limit',
+  '上游音频提交超时': 'Upstream audio submission timed out',
+  '音频缓存提交超时': 'Buffered audio submission timed out',
+  '此配置要求客户端协商并遵守有效录音上限': 'This profile requires the client to negotiate and honor effective recording limits',
+  '请求了不支持的协议能力': 'An unsupported protocol feature was requested',
   'Portal 接入凭据无效': 'Invalid Portal credentials',
   '此 Key 已撤销': 'This key has been revoked',
   识别配置不存在: 'Recognition profile not found',

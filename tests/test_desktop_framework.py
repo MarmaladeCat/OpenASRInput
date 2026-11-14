@@ -23,6 +23,8 @@ class DesktopFrameworkTests(unittest.TestCase):
             "XDG_CONFIG_HOME": str(self.home / "config"),
             "XDG_STATE_HOME": str(self.home / "state"),
             "XDG_SESSION_TYPE": "x11",
+            "OPENASR_DATA_ROOT": str(self.home / "shared"),
+            "OPENASRINPUT_CONFIG": str(self.home / "isolated-input.json"),
             "OPENASRINPUT_FRAMEWORK": "fcitx4",
             "OPENASRINPUT_SETTINGS_PORT": "10088",
         }

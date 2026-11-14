@@ -12,6 +12,10 @@ Order: GET `/v1/capabilities` and `/v1/profiles` → POST `/v1/sessions` → con
 
 Send raw little-endian PCM16, mono, 16 kHz in binary WS messages, without a WAV header. Upload only after ready; stop uploading during finalization but keep receiving finals. After failure create a new session; never automatically replay old audio.
 
+Input negotiates `effectiveSessionLimits` and `recognitionCapabilities` when advertised. Creation and ready must agree on `profileId`, `limits` and `capabilities`. Recording uses the smaller of 295 seconds and `maxRecordingMs`, counting capture startup/pre-ready buffering; ready never resets the clock. The same cumulative PCM budget includes stop-time tails and clips only complete samples as capture reaches the limit. If a newly discovered shorter limit is already exceeded by prebuffered audio, reject the round without uploading it. At the limit stop capture and flush accepted audio before audio.end. Pending audio is bounded to 60 seconds. `readyTimeoutMs` is validated and used, with a 45-second legacy fallback. Cancellation interrupts startup and upload.
+
+Settings retain the recognition snapshot and show preview during recording, incremental text after stopping, recognition after stopping, or unknown timing. Runtime `previewPhase` and `recordingLimitMs` come from the active session. Unknown capabilities never imply live preview; SSE/WS transport and `partialResults` alone are insufficient.
+
 ## Results and commits
 
 | Field / event          | Input behavior                                                                                             |
@@ -24,7 +28,9 @@ Send raw little-endian PCM16, mono, 16 kHz in binary WS messages, without a WAV 
 | session.cancelled      | Abandon this round, never label cancellation success                                                       |
 | session.error          | Retain diagnostic errors; clean up capture and connection                                                  |
 
-`finalizeTimeoutMs` is a one-shot finalization deadline; repeated partials cannot extend it indefinitely. A WS close without a terminal event is not success. retryable permits a new-session attempt, not safe recommit of existing text.
+Portal guarantees an immutable audio-ordered prefix plus a replaceable tail, including interleaved second-pass results. Input commits each unique public final once; the final may be shorter than its preceding preview, with the rest following under a new ID. It never rolls back native commits to repair upstream ordering.
+
+`finalizeTimeoutMs` sets a one-shot deadline when audio.end is sent after buffered PCM, including a receive call already waiting at that moment. Partials cannot renew it. A WS close without a terminal is not success. retryable permits a new-session attempt, not safe recommit of existing text.
 
 ## Local bridge contract
 
@@ -34,9 +40,13 @@ A new bridge must acquire/invalidate targets, update/clear preedit, commit/ackno
 
 Shift+Space controls ordinary dictation; Enter finalizes and Esc cancels. Text-command editing defaults to Linux Alt+Z and Windows Alt+X and uses an independent model connection, not a Portal WS control command.
 
+Alt uses selection editing only when nonempty text can be read. No selection or unsupported optional selection reading falls back to ordinary dictation, equivalent to Shift+Space. Focus loss, explicit read-only protection, oversized selections and transport failures remain errors. The target is rechecked after optional provider queries.
+
+For dictation display/commit only, ASCII padding spaces after Chinese `。！？` are removed, including across finals in one round. English word spacing and newlines are retained. The protocol ledger retains raw text for revision/final validation; selected-text model results are not normalized.
+
 ## Settings and personal hotwords
 
-The local settings page defaults to loopback port 10088 and generates a short-lived private token. Protected `/api/` requests verify token and origin. This is an internal configuration UI, not remote management or third-party database access. Saves check concurrent configuration versions; refresh before editing after a conflict.
+The local settings page defaults to loopback port 10088. The local launch credential creates an independent page token via `POST /api/settings/session`; `GET` retrieves that page's unchanged deadline. Protected `/api/` requests verify token, expiry, and origin. `settings.timeoutMinutes` is an integer from 0 to 525600, default 20; 0 disables page expiry. A changed duration saved by that page resets its deadline; ordinary requests and reloads do not. Expired page tokens cannot open or mint another session. The local launcher credential remains valid for the settings service lifetime so the settings command can open a fresh page. This is an internal configuration UI, not remote management or third-party database access. Saves check concurrent configuration versions; refresh before editing after a conflict.
 
 Personal hotwords use Portal `/v1/hotwords`: GET retrieves revision; PATCH changes settings; arrays replace as a whole. On 409 refresh and reconcile. `/v1/hotwords/catalog` and individual dictionary downloads only supply candidates; add words and save the personal list to enable them. The same key shares a list; different keys are isolated.
 

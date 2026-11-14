@@ -26,9 +26,13 @@
             <option value="zh-CN" lang="zh-CN">中文</option>
             <option value="en" lang="en">English</option>
           </select>
-          <span class="version">v1.1.1</span>
+          <span class="version">v1.2.0</span>
         </div>
       </header>
+      <section id="settings-expired" class="section" tabindex="-1" role="status" hidden>
+        <h2>设置页面已过期</h2>
+        <p>浏览器未自动关闭时，可手动关闭此标签页。重新执行 openasrinput settings 打开新的设置会话。</p>
+      </section>
       <div class="settings-layout">
         <nav id="settings-nav" role="tablist" aria-label="设置分类" aria-orientation="vertical">
           <button
@@ -128,6 +132,13 @@
                   </select></label
                 >
               </div>
+              <label
+                >页面有效期（分钟）<input id="settings-timeout" type="number" min="0" max="525600" step="1"
+              /></label>
+              <p class="hint">
+                默认 20 分钟，0 表示不限时。修改有效期并保存后，本页重新计时；刷新和普通操作不会续期。到期关闭页面，未保存的修改会丢失。
+              </p>
+              <p class="hint"><span>本页到期时间：</span><span id="settings-session-deadline"></span></p>
             </div>
             <div class="section">
               <h3>输入面板主题</h3>
@@ -515,13 +526,13 @@
             </div>
             <div class="info-card">
               <p class="hint">
-                选中文本后按 Alt+Z，说出“翻译为英文”等指令，再按快捷键或 Enter
+                选中文本后按 Linux Alt+Z / Windows Alt+X，说出“翻译为英文”等指令，再按快捷键或 Enter
                 结束。指令只显示在面板，模型完成后替换原选区。Esc 取消；目标或选区变化时不替换。
               </p>
               <p class="hint">
                 仅在选区修改时向当前模型卡发送选区和指令；普通听写只连接 Portal。 DeepSeek
                 使用官方目录；其他服务使用 OpenAI Chat Completions
-                兼容格式。不支持选区读取的应用会提示，请用 Shift+Space 听写。
+                兼容格式。无选区或应用不支持选区读取时，快捷键自动开始普通听写。
               </p>
             </div>
           </section>
@@ -621,7 +632,7 @@
             </div>
             <div class="shortcut-list">
               <div><kbd>Shift + Space</kbd><span>开始、结束普通语音输入</span></div>
-              <div><kbd>Alt + Z</kbd><span>有选区：语音指令修改；无选区：普通语音输入</span></div>
+              <div><kbd>Linux Alt+Z / Windows Alt+X</kbd><span>有选区：语音指令修改；无选区或无法读取：普通语音输入</span></div>
               <div id="linux-extra-keys">
                 <kbd>Enter</kbd><span>收尾</span><kbd>Esc</kbd><span>取消尚未提交的语音内容</span>
               </div>
@@ -673,7 +684,7 @@
               </label>
             </div>
             <div class="info-card">
-              <strong>OpenASRInput 1.1.1</strong>
+              <strong>OpenASRInput 1.2.0</strong>
               <p id="platform-description">独立语音输入 · Portal v1 · Fcitx 公共桥接</p>
               <p>配置文件：<code id="config-path"></code></p>
               <p id="platform-boundary">

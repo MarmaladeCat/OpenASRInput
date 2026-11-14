@@ -28,6 +28,12 @@ export class AudioCalibration {
     return this.pending || active.has(this.job.state);
   }
 
+  dispose() {
+    this.disposed = true;
+    this.version++;
+    clearTimeout(this.timer);
+  }
+
   load(config) {
     this.config = config;
     const followsDefault = !config.audio.deviceId;
@@ -48,6 +54,7 @@ export class AudioCalibration {
   }
 
   async refresh() {
+    if (this.disposed) return;
     clearTimeout(this.timer);
     const version = this.version;
     try {
@@ -59,7 +66,8 @@ export class AudioCalibration {
       if (version !== this.version) return;
       byId('calibration-status').textContent = error.message;
     }
-    if (active.has(this.job.state)) this.timer = setTimeout(() => this.refresh(), 500);
+    if (!this.disposed && active.has(this.job.state))
+      this.timer = setTimeout(() => this.refresh(), 500);
   }
 
   async action(action) {
@@ -86,6 +94,7 @@ export class AudioCalibration {
   }
 
   render() {
+    if (this.disposed) return;
     const state = this.job.state;
     this.options.lock(this.working());
     byId('calibration-status').textContent =
