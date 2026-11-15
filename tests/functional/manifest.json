@@ -50,6 +50,7 @@
       "id": "native-editor",
       "artifacts": [
         "test-results/native-editor-environment.json",
+        "test-results/native-editor-hotkeys.json",
         "test-results/native-editor-result.json",
         "test-results/native-editor-desktop.png"
       ],
@@ -70,6 +71,7 @@
       "timeout": 600,
       "artifacts": [
         "test-results/native-editor-office-host-environment.json",
+        "test-results/native-editor-office-host-hotkeys.json",
         "test-results/native-editor-office-host-result.json",
         "test-results/native-editor-office-host-desktop.png"
       ],
@@ -97,6 +99,33 @@
       "timeout": 600,
       "artifacts": ["test-results/native-powerpoint-result.json"],
       "command": ["{python}", "tests/functional/check_windows_powerpoint.py"]
+    },
+    {
+      "id": "powerpoint-paragraphs",
+      "suite": "windows-office",
+      "title": "实际 PowerPoint 段落与原生选区后备路径",
+      "expected": "独立验证 CR/LF/CRLF、格式、Office 后端；实际候选桥接程序集的原生 fallback 使用真实 COM 代理完成替换和连续输入。",
+      "timeout": 600,
+      "artifacts": ["test-results/native-powerpoint-paragraphs-result.json"],
+      "command": ["{python}", "tests/functional/check_windows_powerpoint.py", "--paragraphs"]
+    },
+    {
+      "id": "powerpoint-notes",
+      "suite": "windows-office",
+      "title": "实际 PowerPoint 演讲者备注",
+      "expected": "单独验证备注页和普通视图备注区的实际桥接输入、选区替换、Unicode、长文本与光标位置，不依赖幻灯片文本用例成功。",
+      "timeout": 600,
+      "artifacts": ["test-results/native-powerpoint-notes-result.json"],
+      "command": ["{python}", "tests/functional/check_windows_powerpoint.py", "--notes"]
+    },
+    {
+      "id": "powerpoint-comments",
+      "suite": "windows-office",
+      "title": "实际 PowerPoint 审阅批注输入框",
+      "expected": "在新建的本地可丢弃演示文稿中打开真实审阅批注，使用桥接验证 Unicode 输入、选区替换、重复定稿、取消及焦点隔离；不能以演讲者备注代替。",
+      "timeout": 600,
+      "artifacts": ["test-results/native-powerpoint-comments-result.json"],
+      "command": ["{python}", "tests/functional/check_windows_powerpoint.py", "--comments"]
     },
     {
       "id": "settings-service",

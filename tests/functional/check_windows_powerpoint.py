@@ -17,12 +17,17 @@ def main():
     parser.add_argument(
         "--bridge", type=Path, help="Use a bridge from the current extracted candidate"
     )
+    target = parser.add_mutually_exclusive_group()
+    target.add_argument("--comments", action="store_true", help="Test review comments separately from slide text and speaker notes")
+    target.add_argument("--notes", action="store_true", help="Test speaker notes independently of slide text")
+    target.add_argument("--paragraphs", action="store_true", help="Test paragraph normalization and real native fallback independently")
     args = parser.parse_args()
     tools = ROOT / ".cache/functional/windows"
     bridge = (args.bridge or tools / "bridge/OpenASRInputBridge.exe").resolve()
     output = ROOT / "test-results"
     output.mkdir(exist_ok=True)
-    record = {"status": "blocked", "realPowerPoint": True, "bridge": str(bridge)}
+    scenario = "comments" if args.comments else "notes" if args.notes else "paragraphs" if args.paragraphs else "editor"
+    record = {"status": "blocked", "realPowerPoint": True, "scenario": scenario, "bridge": str(bridge)}
     code = 2
     try:
         if os.name != "nt":
@@ -94,7 +99,7 @@ def main():
         sandbox = output / ("powerpoint-" + uuid.uuid4().hex)
         record.update(status="failed", sandbox=str(sandbox))
         with subprocess.Popen(
-            [str(tools / "powerpoint/PowerPointTests.exe"), str(bridge), str(sandbox)],
+            [str(tools / "powerpoint/PowerPointTests.exe"), str(bridge), str(sandbox), *([scenario] if scenario != "editor" else [])],
             cwd=ROOT,
             env=env,
         ) as process:
@@ -115,7 +120,8 @@ def main():
         print(str(error), flush=True)
     finally:
         record["exitCode"] = code
-        (output / "native-powerpoint-result.json").write_text(
+        result_name = f"native-powerpoint-{scenario}-result.json" if scenario != "editor" else "native-powerpoint-result.json"
+        (output / result_name).write_text(
             json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )
     return code

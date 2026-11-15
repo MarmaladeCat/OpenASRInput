@@ -137,6 +137,9 @@ def main():
                 time.sleep(0.1)
             os.environ["OPENASRINPUT_TEST_EDITOR_DIR"] = str(directory)
             os.environ["OPENASRINPUT_TEST_TARGET_PROCESS_ID"] = str(process.pid)
+            keyboard_diagnostics = results / f"{prefix}-hotkeys.json"
+            keyboard_diagnostics.write_text("[]\n", encoding="utf-8")
+            os.environ["OPENASRINPUT_TEST_KEYBOARD_DIAGNOSTICS"] = str(keyboard_diagnostics)
             metadata = {
                 "editor": information,
                 "officeHostFixture": args.office_host,
@@ -258,6 +261,8 @@ def main():
                 json.dumps(
                     {
                         "testsRun": result.testsRun,
+                        "status": "failed" if result.failures or result.errors else
+                                  "incomplete" if result.skipped else "passed",
                         "failures": [(str(test), detail) for test, detail in result.failures],
                         "errors": [(str(test), detail) for test, detail in result.errors],
                         "skipped": [(str(test), reason) for test, reason in result.skipped],

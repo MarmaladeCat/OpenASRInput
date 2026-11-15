@@ -44,6 +44,7 @@ internal sealed class Overlay : Forms.Form
         TopMost = true;
         DoubleBuffered = true;
         AutoScaleMode = Forms.AutoScaleMode.None;
+        StartPosition = Forms.FormStartPosition.Manual;
         Text = "OpenASRInput 语音预览";
     }
     protected override bool ShowWithoutActivation => true;

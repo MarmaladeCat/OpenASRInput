@@ -367,7 +367,11 @@ class ReplayTests(PortalFixture, unittest.IsolatedAsyncioTestCase):
         pcm = tone(seconds=0.22)
         started = time.monotonic()
         text = await recognize(self.client, pcm)
-        self.assertGreaterEqual(time.monotonic() - started, 0.22)
+        # Windows' monotonic clock is quantized, and asyncio may dispatch a
+        # timer within one clock tick of its deadline. Keep the real-time pacing
+        # assertion without treating sub-tick measurement error as early replay.
+        elapsed = time.monotonic() - started
+        self.assertGreaterEqual(elapsed + time.get_clock_info("monotonic").resolution, 0.22)
         self.assertEqual(text, "模拟定稿。")
         self.assertEqual(self.pcm, [pcm[:6400], pcm[6400:]])
 

@@ -21,8 +21,8 @@ internal static class OfficeInsertion
             if (!process.ProcessName.Equals("POWERPNT", StringComparison.OrdinalIgnoreCase) ||
                 TextInsertion.NativeEdit(target))
                 return 0;
-            // OBJID_NATIVEOM belongs to paneClassDC, not every control in the
-            // POWERPNT process. Dialog/ribbon edits keep their normal backend.
+            // Office versions expose OBJID_NATIVEOM on paneClassDC or mdiClass,
+            // not every control in POWERPNT. Dialog/ribbon edits keep their backend.
             // Some versions focus a child HWND: walk only its same-process
             // ancestors inside this foreground window, never sibling panes.
             nint window = target.Focus;
@@ -31,7 +31,9 @@ internal static class OfficeInsertion
                 Native.GetWindowThreadProcessId(window, out uint pid);
                 if (pid != target.Process || Native.GetAncestor(window, 2) != target.Window)
                     break;
-                if (Native.WindowClass(window).Equals("paneClassDC", StringComparison.OrdinalIgnoreCase))
+                string type = Native.WindowClass(window);
+                if (type.Equals("paneClassDC", StringComparison.OrdinalIgnoreCase) ||
+                    type.Equals("mdiClass", StringComparison.OrdinalIgnoreCase))
                     return window;
                 if (window == target.Window)
                     break;
@@ -69,7 +71,33 @@ internal static class OfficeInsertion
 
     private static string ReplaceNative(object window, string text, Func<bool> current)
     {
-        string result = OfficeTextRange.Replace(window, TextInsertion.Normalize(text).Replace('\n', '\r'), current);
+        // A broken document/value provider need not hide a working selection
+        // provider. UIA collapse preserves Office's focused element identity;
+        // native Select can rebuild it on some Office versions.
+        string Collapse()
+        {
+            bool selecting = false;
+            try
+            {
+                if (!current())
+                    return "stale";
+                var element = AutomationElement.FocusedElement;
+                if (!element.TryGetCurrentPattern(TextPattern.Pattern, out var value))
+                    return "unsupported";
+                var ranges = ((TextPattern)value).GetSelection();
+                if (ranges.Length != 1)
+                    return "unsupported";
+                var caret = ranges[0].Clone();
+                caret.MoveEndpointByRange(TextPatternRangeEndpoint.Start, caret, TextPatternRangeEndpoint.End);
+                if (!current())
+                    return "stale";
+                selecting = true;
+                caret.Select();
+                return current() ? "accepted" : "unknown";
+            }
+            catch { return selecting ? "unknown" : "unsupported"; }
+        }
+        string result = OfficeTextRange.Replace(window, TextInsertion.Normalize(text).Replace('\n', '\r'), current, Collapse);
         LastStatus = OfficeTextRange.LastStatus;
         return result;
     }

@@ -35,6 +35,8 @@ Windows x64 and Linux amd64/ARM64 combined installers, fixed per-user configurat
 
 Windows target detection tolerates missing optional UIA value/position capabilities and supports native PowerPoint text-selection fallback. Office writes bind to the focused document pane; ordinary controls in that process keep their own insertion backend. Missing UIA text ranges use panel-only preview with confirmed native range insertion. Real Office compatibility remains subject to the version-specific [acceptance procedure](testing.md).
 
+PowerPoint document windows using either `mdiClass` or `paneClassDC` route through the Office selection API, preserving paragraph breaks and surrounding text. Native fallback checks slide/shape ownership independently of COM proxy equality and uses an available selection provider to preserve caret identity. The Windows preview window retains its calculated caret-relative position on its first display. Hotkey diagnostics distinguish registration/hook errors from synthetic-key delivery limitations.
+
 Windows custom-editor insertion checks optional value, text, and caret capabilities independently, including provider failures after a write. Focus is rechecked after provider queries. If no reliable confirmation baseline is available, the character backend reports failure before sending text; ambiguous writes are not repeated.
 
 Standalone Windows installation remembers a custom application directory during maintenance and removal. Uninstalling with configuration deletion resolves the registered installation location instead of reverting to the default application path.

@@ -149,11 +149,90 @@ class WindowsEditorFixture:
             # does, rather than enqueueing press/release in one zero-duration batch.
             time.sleep(0.04)
 
+    def require_keyboard_baseline(self):
+        """Separate desktop injection capability from the bridge under test."""
+        from ctypes import wintypes
+
+        user = ctypes.WinDLL("user32", use_last_error=True)
+        user.RegisterHotKey.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_uint, ctypes.c_uint]
+        user.UnregisterHotKey.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        user.PeekMessageW.argtypes = [ctypes.POINTER(wintypes.MSG), ctypes.c_void_p,
+                                      ctypes.c_uint, ctypes.c_uint, ctypes.c_uint]
+        record = {"test": self.id(), "bridge": self.bridge.context_status().get("hotkeys")}
+        self.bridge.close()
+        registered = False
+        try:
+            registered = bool(user.RegisterHotKey(None, 0x4153, 0x4004, 32))
+            record["registered"] = registered
+            record["registrationError"] = 0 if registered else ctypes.get_last_error()
+            if registered:
+                try:
+                    self.send_keys([(16, True)])
+                    record["shiftHeld"] = bool(user.GetAsyncKeyState(16) & 0x8000)
+                    self.send_keys([(32, True)])
+                    self.send_keys([(32, False)])
+                finally:
+                    self.send_keys([(16, False)])
+                message = wintypes.MSG()
+                hit = False
+                deadline = time.monotonic() + 1
+                while time.monotonic() < deadline and not hit:
+                    while user.PeekMessageW(ctypes.byref(message), None, 0x312, 0x312, 1):
+                        hit |= message.wParam == 0x4153
+                    if not hit:
+                        time.sleep(0.01)
+                record["hotkeyDelivered"] = hit
+            record["status"] = (
+                "passed" if registered and record.get("shiftHeld") and record.get("hotkeyDelivered")
+                else "blocked"
+            )
+        finally:
+            if registered:
+                user.UnregisterHotKey(None, 0x4153)
+            self.bridge = WindowsBridge()
+            self.addCleanup(self.bridge.close)
+            filename = os.environ.get("OPENASRINPUT_TEST_KEYBOARD_DIAGNOSTICS")
+            if filename:
+                path = Path(filename)
+                records = json.loads(path.read_text(encoding="utf-8")) if path.exists() else []
+                atomic_json(path, [*records, record])
+        if record["status"] == "blocked":
+            self.skipTest(f"BLOCKED: no-bridge synthetic keyboard baseline failed: {record}")
+
 
 @unittest.skipUnless(
     LIVE_EDITOR, "requires an explicit disposable WindowsTestEditor sandbox and helper"
 )
 class WindowsEditorTests(WindowsEditorFixture, unittest.TestCase):
+    def test_first_panel_show_keeps_caret_placement_and_focus(self):
+        lease = self.editable_lease("first")
+        first = None
+        for revision in (1, 2):
+            self.assertEqual(self.bridge.show_cursor(
+                lease, revision, CursorFrame("edit-listening", "首次窗口定位", "")
+            ), "accepted")
+            status = self.bridge.context_status()
+            self.assertTrue(status["panelVisible"] and status["panelCaretKnown"])
+            panel, caret = status["panelBounds"], status["panelAnchor"]
+            dx = max(0, panel["x"] - caret["x"] - caret["width"],
+                     caret["x"] - panel["x"] - panel["width"])
+            dy = max(0, panel["y"] - caret["y"] - caret["height"],
+                     caret["y"] - panel["y"] - panel["height"])
+            self.assertLessEqual(max(dx, dy), 30, status)
+            self.assertTrue(dx or dy, "Panel must not cover caret")
+            self.assertTrue(self.bridge.valid(lease))
+            if first is None:
+                first = panel
+            else:
+                self.assertEqual(panel, first, "First Show must keep the calculated position")
+        self.bridge.clear_cursor(lease)
+        lease = self.editable_lease("first")
+        self.assertEqual(self.bridge.show_cursor(
+            lease, 1, CursorFrame("edit-listening", "重新显示", "")
+        ), "accepted")
+        self.assertEqual(self.bridge.context_status()["panelBounds"], first)
+        self.assertTrue(self.bridge.valid(lease))
+
     def test_optional_value_failures_preserve_text_confirmation(self):
         for mode in ("value-read", "value-after-change"):
             with self.subTest(mode=mode):
@@ -226,6 +305,7 @@ class WindowsEditorTests(WindowsEditorFixture, unittest.TestCase):
                     self.fixture("focus", "first")
 
     def test_shift_space_can_request_start_with_a_text_caret(self):
+        self.require_keyboard_baseline()
         for control in ("first", "rich", "web-first", "web-second"):
             with self.subTest(control=control):
                 try:
@@ -429,13 +509,7 @@ class WindowsEditorTests(WindowsEditorFixture, unittest.TestCase):
             with self.subTest(modified=modified):
                 changes = [(13, True), (13, False)]
                 if modified:
-                    self.send_keys([(16, True)])
-                    held = ctypes.WinDLL("user32").GetAsyncKeyState(16) & 0x8000
-                    self.send_keys([(16, False)])
-                    if not held:
-                        self.skipTest(
-                            "desktop filters synthetic Shift down; cannot simulate Shift+Enter"
-                        )
+                    self.require_keyboard_baseline()
                     changes = [(16, True), *changes, (16, False)]
                 self.seed("passthrough")
                 self.bridge.close()

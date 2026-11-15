@@ -29,6 +29,10 @@ The application still uses its own runtime. Each run creates new reports/logs un
 
 For package-native acceptance, run `tests/functional/check_windows_editor.py --bridge '<candidate>/native/OpenASRInputBridge.exe'` with the product test Python and `PYTHONPATH=src;tests`; repeat with `--office-host`. The environment report records the actual bridge assembly hash.
 
+Synthetic modifier tests first close the bridge and register a thread-local Shift+Space baseline. Preserve `native-editor-hotkeys.json` (or `native-editor-office-host-hotkeys.json`): registration errors, modifier state, and actual WM_HOTKEY delivery distinguish a desktop injection limitation from a bridge regression. A failed baseline is blocked/incomplete and keeps acceptance nonzero; it is never a pass. Bridge context diagnostics also expose registration and low-level-hook installation errors. Physical keys remain a separate acceptance step.
+
+Panel tests must include a new bridge's very first SHOW, repeated SHOW and Hide/Show with unchanged caret geometry. Assert actual window bounds and retained target focus, not only the pure placement function. Include mixed DPI and negative monitor coordinates where available.
+
 The disposable editor also hosts a real WPF text box whose optional Value getter can fail before or after insertion while TextPattern still works. Verify selected-position Unicode insertion, idempotent replay, panel-only preview and zero writes when all confirmation channels are unavailable, and read-only/recovery transitions across WinForms, WPF, and Chromium. Headless rules independently fault value/text/selection/count capabilities and trigger focus changes inside provider calls; they execute the actual evidence and continuation code. Missing capability is not permission to ignore explicit protection or to replay an uncertain write.
 
 Windows installer acceptance must also use isolated, nondefault program and configuration directories. Exercise native uninstall with configuration retained, reinstallation, and explicit configuration deletion; verify both the custom application payload and requested data are removed. Package checks require current-user installation-directory discovery before directory costing, so maintenance does not silently fall back to the default path.
@@ -45,6 +49,14 @@ python tests/functional/check_windows_powerpoint.py --bridge '<candidate>/native
 ```
 
 The test creates its own disposable presentation under test-results/ and covers text boxes, empty title placeholders, table cells, normal/page notes, Unicode/paragraphs, selection-only replacement, preview revision/cancellation, long finals, and cross-shape/cell focus isolation. Missing PowerPoint is blocked with a nonzero exit, never a skip/pass. Keep `native-powerpoint-result.json`, the runner log, and the sandbox captures; record the exact Office version and bridge hashes. Permanent Office editions and Microsoft 365 require separate runs. Check physical Shift+Space with a blinking caret and real microphone separately from bridge-protocol tests.
+
+The separate `powerpoint-comments` case opens the real Review → New Comment editor in another disposable local presentation. It checks Unicode insertion, selection replacement, idempotent finals, cancellation, and focus isolation from slide text. Speaker notes are not review comments. Preserve `native-powerpoint-comments-result.json` and the run log even when the installed Office edition cannot expose an editable comment. For a packaged bridge, use `check_windows_powerpoint.py --comments --bridge '<candidate>/native/OpenASRInputBridge.exe'`. Physical-machine runs use `--execution-host physical`.
+
+`powerpoint-notes` (`check_windows_powerpoint.py --notes`) runs notes-page and normal-view speaker-note checks independently, preserving `native-powerpoint-notes-result.json` even if slide-text acceptance failed first.
+
+After changing the notes view or selecting text through COM, establish fixture readiness by observing the expected UIA document/selection and a stable focus identity before BEGIN. A fixed delay alone can bind the previous editor. This precondition must not retry a stale SHOW/COMMIT or weaken the product's focus-change revocation.
+
+`powerpoint-paragraphs` (`check_windows_powerpoint.py --paragraphs`) independently checks CR/LF/CRLF, exact surrounding text/formatting, and the actual Office selection backend. It also loads the supplied bridge assembly into the test process to exercise its native-range fallback against real COM proxies; these fallback checks are distinct from pipe-protocol commits. Verify replacement, caret collapse, and continuation without assuming COM proxy equality establishes owner identity. The headless rules cover stable owner IDs, same-text/different-owner isolation, independent selection capabilities, and ambiguous collapse without replay. Preserve `native-powerpoint-paragraphs-result.json` and its log.
 
 ## Required behavior
 

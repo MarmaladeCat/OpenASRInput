@@ -31,6 +31,7 @@ internal sealed class Host : Forms.Form
     private string selectedText = "";
     private ulong generation, revision;
     private bool shiftSpace, altX;
+    private readonly int shiftSpaceError, altXError, keyboardHookError;
     private bool resourcesDisposed;
     private readonly SessionKeys sessionKeys = new();
     private readonly Native.KeyboardHook keyboardCallback;
@@ -53,9 +54,12 @@ internal sealed class Host : Forms.Form
         Text = "OpenASRInput 语音输入";
         CreateHandle();
         shiftSpace = Native.RegisterHotKey(Handle, 1, 0x4000 | 4, 0x20);
+        shiftSpaceError = shiftSpace ? 0 : Marshal.GetLastWin32Error();
         altX = Native.RegisterHotKey(Handle, 2, 0x4000 | 1, 0x58);
+        altXError = altX ? 0 : Marshal.GetLastWin32Error();
         keyboardCallback = KeyboardEvent;
         keyboardHook = Native.SetWindowsHookExW(13, keyboardCallback, Native.GetModuleHandleW(null), 0);
+        keyboardHookError = keyboardHook != 0 ? 0 : Marshal.GetLastWin32Error();
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add("设置", null, (_, _) => Program.Send("0\tEVENT\tsettings"));
         menu.Items.Add("取消本轮语音", null, (_, _) => { Clear(); Program.Send("0\tEVENT\tcancel"); });
@@ -242,6 +246,8 @@ internal sealed class Host : Forms.Form
                     result = JsonSerializer.Serialize(new
                     {
                         backend = "windows",
+                        hotkeys = new { shiftSpace, shiftSpaceError, altX, altXError,
+                            keyboardHook = keyboardHook != 0, keyboardHookError },
                         process = Environment.ProcessId,
                         active = target != null,
                         lastLoss,

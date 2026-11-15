@@ -29,6 +29,10 @@ python scripts/test.py run --suite ui
 
 包内原生验收使用本产品测试 Python、设置 `PYTHONPATH=src;tests`，运行 `tests/functional/check_windows_editor.py --bridge '<候选目录>/native/OpenASRInputBridge.exe'`，再加 `--office-host` 重复执行。环境报告记录实际桥接程序集哈希。
 
+合成修饰键测试先关闭桥接，注册线程级 Shift+Space 进行基线检查。保留 `native-editor-hotkeys.json`（或 `native-editor-office-host-hotkeys.json`）：注册错误、修饰键状态和实际 WM_HOTKEY 投递用于区分桌面注入限制与桥接回归。基线失败标为受阻/未完成，验收仍非零退出，不算通过。桥接上下文诊断还提供热键注册及低级钩子安装错误。实体按键仍须单独验收。
+
+面板测试必须覆盖新桥接的第一次 SHOW、重复 SHOW，以及光标位置不变时的 Hide/Show；断言真实窗口坐标和目标焦点保持，不能只测试纯定位函数。具备环境时覆盖混合 DPI 与负坐标显示器。
+
 专用编辑器还包含真实 WPF 文本框，可让可选 Value getter 在写入前或写入后失败，同时保留 TextPattern。核验指定位置的 Unicode 输入、幂等重放、全部确认通道不可用时的面板预览与零写入，以及 WinForms、WPF、Chromium 的只读/恢复切换。无桌面规则分别注入值/文本/选区/计数故障，并在提供者调用中触发焦点变化，运行实际的证据与续写代码。缺少能力不允许绕过明确保护，也不允许重发不确定的写入。
 
 Windows 安装器验收还必须使用隔离的非默认程序目录与配置目录，覆盖原生卸载保留配置、重装和明确删除配置，并核验自定义程序文件与指定数据均被删除。包检查要求在目录计算前查找当前用户登记的安装目录，防止维护时静默回退到默认路径。
@@ -45,6 +49,14 @@ python tests/functional/check_windows_powerpoint.py --bridge '<候选目录>/nat
 ```
 
 测试仅在 test-results/ 下新建可丢弃演示文稿，覆盖文本框、空标题占位符、表格单元格、普通视图/备注页、Unicode/段落、仅替换选区、预览修订/取消、长定稿及跨形状/单元格焦点隔离。未安装 PowerPoint 时非零退出并记录阻塞，不算跳过或通过。保留 `native-powerpoint-result.json`、执行器日志和沙盒截图，记录准确 Office 版本与桥接哈希。Office 永久版和 Microsoft 365 分开执行；已有闪烁光标时的实体 Shift+Space 与真实麦克风须在桥接协议测试之外另验。
+
+独立的 `powerpoint-comments` 用例在另一份可丢弃本地演示文稿中打开真实“审阅 → 新建批注”编辑框，检查 Unicode 输入、选区替换、定稿幂等、取消和与幻灯片文字的焦点隔离。演讲者备注不能替代审阅批注。即使当前 Office 版本未暴露可编辑批注，也应保留 `native-powerpoint-comments-result.json` 和执行日志。验证包内桥接使用 `check_windows_powerpoint.py --comments --bridge '<candidate>/native/OpenASRInputBridge.exe'`；实体机执行时添加 `--execution-host physical`。
+
+`powerpoint-notes`（`check_windows_powerpoint.py --notes`）独立执行备注页及普通视图演讲者备注检查。即使幻灯片文字验收先失败，也会单独产生 `native-powerpoint-notes-result.json`。
+
+切换备注视图或通过 COM 选择文字后，应先观察到预期 UIA 文档/选区及稳定焦点身份，再执行 BEGIN。仅固定等待可能绑定到旧编辑器。这项夹具就绪前置条件不得重试已返回 stale 的 SHOW/COMMIT，也不得削弱产品的焦点切换撤销机制。
+
+`powerpoint-paragraphs`（`check_windows_powerpoint.py --paragraphs`）独立验证 CR/LF/CRLF、前后文/格式完整性和实际 Office 选区后端。同时把指定桥接程序集加载到测试进程，用真实 COM 代理验证原生选区 fallback；这些检查与管道协议提交分开记录。验证选区替换、光标折叠和连续输入，不假定 COM 代理相等就能代表 owner 身份。无桌面规则覆盖稳定 owner 标识、同文字不同 owner 隔离、独立选区能力和折叠结果不明时不重试。保留 `native-powerpoint-paragraphs-result.json` 及日志。
 
 ## 必须覆盖的行为
 

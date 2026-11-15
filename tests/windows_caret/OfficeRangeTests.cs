@@ -5,6 +5,22 @@ using OpenASRInput;
 public sealed class OfficeWindow
 {
     public OfficeSelection Selection { get; } = new();
+    public int ViewType { get; set; } = 9;
+    public OfficeView View { get; } = new();
+}
+public sealed class OfficeView { public OfficeSlide Slide { get; } = new(); }
+public sealed class OfficeSlide { public int SlideID { get; set; } = 256; }
+public sealed class OfficeShape
+{
+    public int Id { get; set; } = 2;
+    public OfficeSlide Parent { get; } = new();
+}
+public sealed class OfficeFrameProxy
+{
+    private readonly OfficeFrame frame;
+    public OfficeFrameProxy(OfficeFrame frame) => this.frame = frame;
+    public OfficeRange TextRange => frame.TextRange;
+    public OfficeShape Parent => frame.Parent;
 }
 public sealed class OfficeSelection
 {
@@ -17,15 +33,16 @@ public sealed class OfficeFrame
     public int Writes, Reads, Collapses;
     public Action<int>? OnRead;
     public Action? OnCharacters;
-    public bool ThrowAfterWrite, IgnoreWrite, IgnoreCollapse, MissingParent;
+    public bool ThrowAfterWrite, IgnoreWrite, IgnoreCollapse, MissingParent, CollapseOnWrite;
     public OfficeWindow Window = new();
+    public OfficeShape Parent { get; } = new();
     public OfficeRange TextRange => new(this, 1, Content.Length);
     public void Select(int start, int length) => Window.Selection.TextRange = new(this, start, length);
 }
 public sealed class OfficeRange
 {
     private readonly OfficeFrame frame;
-    public OfficeFrame? Parent => frame.MissingParent ? null : frame;
+    public OfficeFrameProxy? Parent => frame.MissingParent ? null : new(frame);
     public int Start { get; }
     public int Length { get; private set; }
     public OfficeRange(OfficeFrame frame, int start, int length)
@@ -49,6 +66,8 @@ public sealed class OfficeRange
                 return;
             frame.Content = frame.Content[..(Start - 1)] + value + frame.Content[(Start - 1 + Length)..];
             Length = value.Length;
+            if (frame.CollapseOnWrite)
+                frame.Select(Start + value.Length, 0);
             if (frame.ThrowAfterWrite)
                 throw new InvalidOperationException("Ambiguous COM completion");
         }
@@ -101,6 +120,44 @@ internal static class OfficeRangeTests
         frame.MissingParent = true;
         Check(OfficeTextRange.Replace(frame.Window, "blocked", () => true) == "unsupported" && frame.Writes == 0,
             "unverifiable table-cell parent cannot trigger a blind write");
+        foreach (bool changeSlide in new[] { false, true })
+        {
+            frame = new OfficeFrame { Content = "same text" };
+            frame.Select(2, 0);
+            var other = new OfficeFrame { Content = frame.Content, Window = frame.Window };
+            if (changeSlide)
+                other.Parent.Parent.SlideID++;
+            else
+                other.Parent.Id++;
+            frame.OnRead = reads => { if (reads == 2) other.Select(2, 0); };
+            Check(OfficeTextRange.Replace(frame.Window, "blocked", () => true) == "stale" && frame.Writes == 0 && other.Writes == 0,
+                "equal text and offsets in another owner cannot authorize a write");
+        }
+        frame = new OfficeFrame { Content = "same text" };
+        frame.Select(2, 0);
+        frame.Parent.Id = 0;
+        Check(OfficeTextRange.Replace(frame.Window, "blocked", () => true) == "unsupported" && frame.Writes == 0,
+            "missing stable shape identity prevents a fallback write");
+        frame = new OfficeFrame { Content = "前后", CollapseOnWrite = true };
+        frame.Select(2, 0);
+        frame.OnCharacters = () => throw new Exception("Already collapsed caret must not be selected again");
+        Check(OfficeTextRange.Replace(frame.Window, "中🙂", () => true) == "accepted" && frame.Collapses == 0,
+            "Office setter's verified collapsed caret preserves its UIA identity");
+        foreach (bool ambiguous in new[] { false, true })
+        {
+            frame = new OfficeFrame { Content = "前后" };
+            frame.Select(2, 0);
+            frame.OnCharacters = () => throw new Exception("Optional selection must not replay through native Select");
+            int selections = 0;
+            string result = OfficeTextRange.Replace(frame.Window, "中🙂", () => true, () =>
+            {
+                selections++;
+                frame.Select(5, 0);
+                return ambiguous ? "unknown" : "accepted";
+            });
+            Check(result == (ambiguous ? "unknown" : "accepted") && selections == 1 && frame.Collapses == 0,
+                "independent selection provider is confirmed once; ambiguous collapse never replays");
+        }
         for (int fault = 0; fault < 3; fault++)
         {
             frame = new OfficeFrame
